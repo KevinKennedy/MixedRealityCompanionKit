@@ -84,6 +84,12 @@ namespace HoloLensCommander
         { get; private set; }
 
         /// <summary>
+        /// Command used to setup kiosk mode on the HoloLens
+        /// </summary>
+        public ICommand SetKioskModeCommand
+        { get; private set; }
+
+        /// <summary>
         /// Command used to display the set tag dialog.
         /// </summary>
         public ICommand SetTagCommand

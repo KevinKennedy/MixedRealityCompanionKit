@@ -196,6 +196,7 @@ namespace HoloLensCommander
                     await this.UpdateBatteryStatus();
                     await this.UpdateIpd();
                     await this.UpdateThermalStage();
+                    await this.UpdateKioskModeStatus();
 
                     this.NotifyHeartbeatReceived();
                 }
@@ -316,6 +317,22 @@ namespace HoloLensCommander
                 this.Ipd = await this.devicePortal.GetInterPupilaryDistanceAsync();
             }
             catch(NotSupportedException)
+            {
+                // Not supported on this type of device.
+            }
+        }
+
+        /// <summary>
+        /// Updates the cached kiosk mode state
+        /// </summary>
+        /// <returns>Task object used for tracking method completion.</returns>
+        private async Task UpdateKioskModeStatus()
+        {
+            try
+            {
+                this.KioskModeStatus = await this.devicePortal.GetKioskModeStatusAsync();
+            }
+            catch (NotSupportedException)
             {
                 // Not supported on this type of device.
             }

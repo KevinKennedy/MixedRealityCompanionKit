@@ -96,6 +96,12 @@ namespace HoloLensCommander
         { get; private set; }
 
         /// <summary>
+        /// Returns the status of Kiosk mode on this device
+        /// </summary>
+        public KioskModeStatus KioskModeStatus
+        { get; private set; }
+
+        /// <summary>
         /// Get or set the cached name of the connected device.
         /// </summary>
         private string machineName = "";

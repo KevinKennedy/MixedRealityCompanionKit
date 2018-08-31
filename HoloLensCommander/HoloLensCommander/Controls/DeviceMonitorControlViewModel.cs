@@ -430,6 +430,73 @@ namespace HoloLensCommander
         }
 
         /// <summary>
+        /// Displays the set kiosk mode dialog.
+        /// </summary>
+        /// <returns>Task object used for tracking method completion.</returns>
+        internal async Task SetKioskModeAsync()
+        {
+            string[] packageRelativeIdsToFilterFromKioskMode = {
+                "HoloShell_cw5n1h2txyewy!HoloShell",
+                "OOBEApp_cw5n1h2txyewy!OOBEApp",
+                "SystemSettings_cw5n1h2txyewy!SystemSettings",
+                "Microsoft.MicrosoftEdge_8wekyb3d8bbwe!MicrosoftEdge",
+                "Microsoft.WindowsStore_8wekyb3d8bbwe!App",
+                "Microsoft.Windows.Cortana_cw5n1h2txyewy!CortanaUI" };
+
+            if (this.IsConnected && this.IsSelected && this.deviceMonitor.KioskModeStatus.StatusAvailable)
+            {
+                AppPackages installedApps = await this.deviceMonitor.GetInstalledApplicationsAsync();
+                var filteredPackages = installedApps.Packages.FindAll((package) =>
+                {
+                    if (package.AppListEntry == 1)
+                    {
+                        return false;
+                    }
+
+                    if (Array.IndexOf(packageRelativeIdsToFilterFromKioskMode, package.AppId) >= 0)
+                    {
+                        return false;
+                    }
+                    return true;
+                });
+
+                PackageInfo startupAppPackageInfo = null;
+                var startupAppPackageName = this.deviceMonitor.KioskModeStatus.StartupAppPackageName;
+
+                if (!string.IsNullOrEmpty(startupAppPackageName))
+                {
+                    foreach (var appPackage in installedApps.Packages)
+                    {
+                        if (appPackage.AppId == startupAppPackageName)
+                        {
+                            startupAppPackageInfo = appPackage;
+                        }
+                    }
+                }
+
+                SetKioskModeDialog dialog = new SetKioskModeDialog(
+                    this.deviceMonitor.KioskModeStatus.KioskModeEnabled,
+                    filteredPackages,
+                    startupAppPackageInfo);
+                ContentDialogResult result = await dialog.ShowAsync().AsTask<ContentDialogResult>();
+
+                if(result == ContentDialogResult.Primary)
+                {
+                    try
+                    {
+                        await this.deviceMonitor.SetKioskModeAsync(dialog.KioskModeEnabled, dialog.StartupAppPackageInfo.AppId);
+                    }
+                    catch (Exception e)
+                    {
+                        this.StatusMessage = string.Format(
+                            "Unable to update the IPD - {0}",
+                            e.Message);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Displays the device information dialog.
         /// </summary>
         /// <returns>Task object used for tracking method completion.</returns>
@@ -619,6 +686,7 @@ namespace HoloLensCommander
             this.BatteryLevel = "--";
             this.ThermalStatus = Visibility.Collapsed;
             this.Ipd = "--";
+            this.KioskModeState = "--";
         }
 
         /// <summary>
@@ -649,7 +717,6 @@ namespace HoloLensCommander
                 // Cause common apps to be refreshed.
                 this.deviceMonitorControl.NotifySelectedChanged();
                 this.firstContact = true;
-
             }
 
             if (this.Address != this.deviceMonitor.Address)
@@ -661,7 +728,7 @@ namespace HoloLensCommander
                 // Re-save the collection...
                 this.deviceMonitorControl.NotifyTagChanged();
             }
-
+                       
             // Update the UI
             this.SetFilter();
             this.PowerIndicator = sender.BatteryState.IsOnAcPower ? OnAcPowerLabel : OnBatteryLabel;
@@ -670,6 +737,16 @@ namespace HoloLensCommander
             {
                 this.ThermalStatus = (sender.ThermalStage == ThermalStages.Normal) ? Visibility.Collapsed : Visibility.Visible;
                 this.Ipd = sender.Ipd.ToString();
+            }
+
+            if (sender.KioskModeStatus.StatusAvailable)
+            {
+                this.KioskModeState = sender.KioskModeStatus.KioskModeEnabled ? "Yes" : "No";
+            }
+            else
+            {
+                // HoloLens is likely the developer SKU, not the enterprise SKU
+                this.KioskModeState = "N/A";
             }
         }
 
@@ -739,6 +816,21 @@ namespace HoloLensCommander
                     }
                 });
 
+            this.SetKioskModeCommand = new Command(
+                async (parameter) =>
+                {
+                    try
+                    {
+                        await this.SetKioskModeAsync();
+                    }
+                    catch(Exception e)
+                    {
+                        this.StatusMessage = string.Format(
+                            "Failed to set kiosk mode ({0})",
+                            e.Message);
+                    }
+                });
+
             this.SetTagCommand = new Command(
                 async (parameter) =>
                 {
@@ -772,12 +864,14 @@ namespace HoloLensCommander
                     this.Filter = DeviceFilters.HoloLens;
                     this.DeviceTypeLabel = DeviceIsHoloLensLabel;
                     this.IpdVisibility = Visibility.Visible;
+                    this.KioskModeVisiblity = Visibility.Visible;
                     break;
 
                 case DevicePortalPlatforms.Windows:
                     this.Filter = DeviceFilters.Desktop;
                     this.DeviceTypeLabel = DeviceIsPCLabel;
                     this.IpdVisibility = Visibility.Collapsed;
+                    this.KioskModeVisiblity = Visibility.Collapsed;
                     break;
 
                 case DevicePortalPlatforms.VirtualMachine:
@@ -787,18 +881,21 @@ namespace HoloLensCommander
                             this.Filter = DeviceFilters.Desktop;
                             this.DeviceTypeLabel = DeviceIsPCLabel;
                             this.IpdVisibility = Visibility.Collapsed;
+                            this.KioskModeVisiblity = Visibility.Collapsed;
                             break;
 
                         case "Windows.Holographic":
                             this.Filter = DeviceFilters.HoloLens;
                             this.DeviceTypeLabel = DeviceIsHoloLensLabel;
                             this.IpdVisibility = Visibility.Visible;
+                            this.KioskModeVisiblity = Visibility.Visible;
                             break;
 
                         default:
                             this.Filter = DeviceFilters.None;
                             this.DeviceTypeLabel = DeviceIsUnknownLabel;
                             this.IpdVisibility = Visibility.Collapsed;
+                            this.KioskModeVisiblity = Visibility.Collapsed;
                             break;
                     }
                     break;
@@ -807,6 +904,7 @@ namespace HoloLensCommander
                     this.Filter = DeviceFilters.None;
                     this.DeviceTypeLabel = this.firstContact ? DeviceIsUnknownLabel : ConnectionNotEstablishedLabel;
                     this.IpdVisibility = Visibility.Collapsed;
+                    this.KioskModeVisiblity = Visibility.Collapsed;
                     break;
             }
         }

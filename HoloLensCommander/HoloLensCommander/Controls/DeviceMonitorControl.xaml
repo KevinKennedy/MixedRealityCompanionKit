@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     d:DesignHeight="40"
-    d:DesignWidth="800">
+    d:DesignWidth="850">
 
     <UserControl.Resources>
         <Style TargetType="CheckBox">
@@ -162,6 +162,34 @@
                     <CompositeTransform ScaleX="0.8" ScaleY="0.8"/>
                 </Button.RenderTransform>
             </Button>
+            <Grid
+                Canvas.Left="784"
+                Width="66"
+                Height="40"                
+                Visibility="{Binding Path=KioskModeVisiblity,FallbackValue=Visibility.Visible}"
+                >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding Path=KioskModeState,FallbackValue=??}" HorizontalAlignment="Center" />
+                <Button 
+                    Grid.Column="1"
+                    Content="&#xEB7E;" 
+                    FontFamily="Segoe MDL2 Assets" FontSize="10"
+                    ToolTipService.ToolTip="Setup Kiosk Mode..."
+                    Command="{Binding Path=SetKioskModeCommand}"
+                    Height="22" Width="32"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    >
+                    <Button.RenderTransform>
+                        <CompositeTransform ScaleX="1.0" ScaleY="0.8"/>
+                    </Button.RenderTransform>
+                </Button>
+                <!--
+                 -->
+            </Grid>
         </Canvas>
     </Grid>
 </Page>

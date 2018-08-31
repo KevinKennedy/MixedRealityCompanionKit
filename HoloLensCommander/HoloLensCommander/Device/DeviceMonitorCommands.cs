@@ -325,6 +325,17 @@ namespace HoloLensCommander
         }
 
         /// <summary>
+        /// En/Disables Kiosk mode on the HoloLens.  This will only work on the Enterprise SKU of HoloLens
+        /// </summary>
+        /// <param name="kioskModeEnabled">True to enable Kiosk mode</param>
+        /// <param name="startupAppPackageName">Package name of app to run in place of the shell</param>
+        /// <returns>Task object used for tracking method completion.</returns>
+        public async Task SetKioskModeAsync(bool kioskModeEnabled, string startupAppPackageName)
+        {
+            await this.devicePortal.SetKioskModeSettingsAsync(kioskModeEnabled, startupAppPackageName);
+        }
+
+        /// <summary>
         /// Shuts down this device.
         /// </summary>
         /// <returns>Task object used for tracking method completion.</returns>

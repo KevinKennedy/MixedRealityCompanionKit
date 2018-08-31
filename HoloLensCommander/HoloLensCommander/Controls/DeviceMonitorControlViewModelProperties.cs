@@ -107,7 +107,7 @@ namespace HoloLensCommander
                 return this.ipd;
             }
 
-            set
+            private set
             {
                 if (this.ipd != value)
                 {
@@ -131,6 +131,45 @@ namespace HoloLensCommander
                 {
                     this.ipdVisibility = value;
                     this.NotifyPropertyChanged("IpdVisibility");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the state of kiosk mode on the device
+        /// </summary>
+        private string kioskModeState = string.Empty;
+        public string KioskModeState
+        {
+            get
+            {
+                return this.kioskModeState;
+            }
+
+            private set
+            {
+                if(this.kioskModeState != value)
+                {
+                    this.kioskModeState = value;
+                    this.NotifyPropertyChanged("KioskModeState");
+                }
+            }
+        }
+
+        private Visibility kioskModeVisibility = Visibility.Collapsed;
+        public Visibility KioskModeVisiblity
+        {
+            get
+            {
+                return this.kioskModeVisibility;
+            }
+
+            private set
+            {
+                if(this.kioskModeVisibility != value)
+                {
+                    this.kioskModeVisibility = value;
+                    this.NotifyPropertyChanged("KioskModeVisiblity");
                 }
             }
         }
