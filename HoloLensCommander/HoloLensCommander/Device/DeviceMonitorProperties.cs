@@ -99,8 +99,8 @@ namespace HoloLensCommander
         /// Returns the status of Kiosk mode on this device
         /// </summary>
         public KioskModeStatus KioskModeStatus
-        { get; private set; }
-
+        { get; private set; } = new DevicePortal.KioskModeStatus(); // default to null object that says it's not supported.
+        
         /// <summary>
         /// Get or set the cached name of the connected device.
         /// </summary>

@@ -82,6 +82,12 @@ namespace HoloLensCommander
         { get; private set; }
 
         /// <summary>
+        /// Gets the collection of applications that are common to all selected devices and can be used in Kiosk mode
+        /// </summary>
+        public ObservableCollection<string> CommonKioskModeApps
+        { get; private set; }
+
+        /// <summary>
         /// Gets a value indicating whether or not both the username and password boxes contain valid (non-whitespace) strings.
         /// </summary>
         private bool credentialsSet = false;
@@ -213,6 +219,48 @@ namespace HoloLensCommander
                 {
                     this.selectedApp = value;
                     this.NotifyPropertyChanged("SelectedApp");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the currently selected kiosk mode application.
+        /// </summary>
+        private string selectedKioskModeApp = null;
+        public string SelectedKioskModeApp
+        {
+            get
+            {
+                return this.selectedKioskModeApp;
+            }
+
+            set
+            {
+                if (this.selectedKioskModeApp != value)
+                {
+                    this.selectedKioskModeApp = value;
+                    this.NotifyPropertyChanged("SelectedKioskModeApp");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reflects the check box state of enabling kiosk mode.
+        /// </summary>
+        private bool kioskModeEnabled = false;
+        public bool KioskModeEnabled
+        {
+            get
+            {
+                return this.kioskModeEnabled;
+            }
+
+            set
+            {
+                if(this.kioskModeEnabled != value)
+                {
+                    this.kioskModeEnabled = value;
+                    this.NotifyPropertyChanged("KioskModeEnabled");
                 }
             }
         }

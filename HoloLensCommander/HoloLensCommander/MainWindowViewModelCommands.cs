@@ -438,6 +438,89 @@ namespace HoloLensCommander
         }
 
         /// <summary>
+        /// Command used to refresh the list of applications that are installed on all of on the selected devices and
+        /// can be used as the kiosk mode startup app.
+        /// </summary>
+        public ICommand RefreshKioskModeAppsCommand
+        { get; private set; }
+
+        /// <summary>
+        /// Implementation of the refresh common applications command.
+        /// </summary>
+        /// <returns>Task object used for tracking method completion.</returns>
+        private async Task RefreshKioskModeAppsAsync()
+        {
+            // Early exit if refresh has been suppressed.
+            //if (this.suppressRefreshCommonApps) { return; }
+
+            this.StatusMessage = "Refreshing kiosk mode common applications";
+
+            List<string> kioskModeAppIds = new List<string>();
+
+            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
+            {
+                DeviceMonitorControlViewModel viewModel = monitor.ViewModel;
+                if (!viewModel.IsSelected) { continue; }
+
+                List<string> deviceKioskModeAppIds = await viewModel.GetInstalledKioskModeAppIdsAsync();
+
+                // If this is the first device queried...
+                if (kioskModeAppIds.Count == 0)
+                {
+                    // ... Add all apps.
+                    kioskModeAppIds.AddRange(deviceKioskModeAppIds);
+                }
+                else
+                {
+                    List<string> appNamesToRemove = new List<string>();
+
+                    // Remove apps that do not exist on this device.
+                    foreach (string name in kioskModeAppIds)
+                    {
+                        if (!deviceKioskModeAppIds.Contains(name))
+                        {
+                            appNamesToRemove.Add(name);
+                        }
+                    }
+
+                    foreach (string name in appNamesToRemove)
+                    {
+                        kioskModeAppIds.Remove(name);
+                    }
+                }
+            }
+
+            this.UpdateCommonKioskModeApps(kioskModeAppIds);
+
+            this.StatusMessage = string.Empty;
+        }
+
+        /// <summary>
+        /// Command used to apply the desired kiosk mode settings to all the selected devices
+        /// </summary>
+        public ICommand ApplyKioskModeSettingsCommand
+        { get; private set; }
+
+        /// <summary>
+        /// Implementation of ApplyKioskModeSettingsCommand
+        /// </summary>
+        /// <returns>Task object used for tracking method completion.</returns>
+        private async Task ApplyKioskModeSettings()
+        {
+            YesNoMessageDialog messageDialog = new YesNoMessageDialog(
+                "Are you sure you want to apply kiosk mode settings to the selected devices?");
+            if (MessageDialogButtonId.Yes != await messageDialog.ShowAsync())
+            {
+                return;
+            }
+
+            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
+            {
+                await monitor.ViewModel.SetKioskModeAsync(this.KioskModeEnabled, this.SelectedKioskModeApp);
+            }
+        }
+
+        /// <summary>
         /// Command used to save mixed reality files.
         /// </summary>
         public ICommand SaveMixedRealityFilesCommand

@@ -174,6 +174,32 @@ namespace HoloLensCommander
         }
 
         /// <summary>
+        /// Queries the device for the names of all installed kiosk mode applications.
+        /// </summary>
+        /// <returns>List of application names.</returns>
+        internal async Task<List<string>> GetInstalledKioskModeAppIdsAsync()
+        {
+            List<string> appIds = new List<string>();
+
+            if (this.IsConnected && this.IsSelected)
+            {
+                try
+                {
+                    AppPackages installedApps = await this.deviceMonitor.GetInstalledApplicationsAsync();
+                    var filtered = this.KioskModeAppsFilter(installedApps.Packages);
+                    foreach(var package in filtered)
+                    {
+                        appIds.Add(package.AppId);
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return appIds;
+        }
+        /// <summary>
         /// Downloads mixed reality files from the device.
         /// </summary>
         /// <param name="parentFolder">The parent folder which will contain the device specific folder.</param>
@@ -435,30 +461,11 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         internal async Task SetKioskModeAsync()
         {
-            string[] packageRelativeIdsToFilterFromKioskMode = {
-                "HoloShell_cw5n1h2txyewy!HoloShell",
-                "OOBEApp_cw5n1h2txyewy!OOBEApp",
-                "SystemSettings_cw5n1h2txyewy!SystemSettings",
-                "Microsoft.MicrosoftEdge_8wekyb3d8bbwe!MicrosoftEdge",
-                "Microsoft.WindowsStore_8wekyb3d8bbwe!App",
-                "Microsoft.Windows.Cortana_cw5n1h2txyewy!CortanaUI" };
 
             if (this.IsConnected && this.IsSelected && this.deviceMonitor.KioskModeStatus.StatusAvailable)
             {
                 AppPackages installedApps = await this.deviceMonitor.GetInstalledApplicationsAsync();
-                var filteredPackages = installedApps.Packages.FindAll((package) =>
-                {
-                    if (package.AppListEntry == 1)
-                    {
-                        return false;
-                    }
-
-                    if (Array.IndexOf(packageRelativeIdsToFilterFromKioskMode, package.AppId) >= 0)
-                    {
-                        return false;
-                    }
-                    return true;
-                });
+                var filteredPackages = this.KioskModeAppsFilter(installedApps.Packages);
 
                 PackageInfo startupAppPackageInfo = null;
                 var startupAppPackageName = this.deviceMonitor.KioskModeStatus.StartupAppPackageName;
@@ -482,18 +489,63 @@ namespace HoloLensCommander
 
                 if(result == ContentDialogResult.Primary)
                 {
-                    try
-                    {
-                        await this.deviceMonitor.SetKioskModeAsync(dialog.KioskModeEnabled, dialog.StartupAppPackageInfo.AppId);
-                    }
-                    catch (Exception e)
-                    {
-                        this.StatusMessage = string.Format(
-                            "Unable to update the IPD - {0}",
-                            e.Message);
-                    }
+                    await this.SetKioskModeAsync(dialog.KioskModeEnabled, dialog.StartupAppPackageInfo.AppId);
                 }
             }
+        }
+
+        /// <summary>
+        /// Sets kiosk mode settings on the HoloLens
+        /// </summary>
+        /// <param name="kioskModeEnabled">True to enable kiosk mode</param>
+        /// <param name="appId">Relative ID or AppId of the app to be the kiosk mode app</param>
+        /// <returns>Task object used for tracking method completion.</returns>
+        internal async Task SetKioskModeAsync(bool kioskModeEnabled, string appId)
+        {
+            if (this.IsConnected && this.IsSelected && this.deviceMonitor.KioskModeStatus.StatusAvailable)
+            {
+                try
+                {
+                    await this.deviceMonitor.SetKioskModeAsync(kioskModeEnabled, appId);
+                }
+                catch (Exception e)
+                {
+                    this.StatusMessage = string.Format(
+                        "Unable to set kiosk mode - {0}",
+                        e.Message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes any AppPackages from the list that cannot be the kiosk mode startup app
+        /// </summary>
+        /// <param name="fullList">List of all the app packages on the device</param>
+        /// <returns>Filtered list</returns>
+        private List<PackageInfo> KioskModeAppsFilter(List<PackageInfo> fullList)
+        {
+            string[] packageRelativeIdsToFilterFromKioskMode = {
+                "HoloShell_cw5n1h2txyewy!HoloShell",
+                "OOBEApp_cw5n1h2txyewy!OOBEApp",
+                "SystemSettings_cw5n1h2txyewy!SystemSettings",
+                "Microsoft.MicrosoftEdge_8wekyb3d8bbwe!MicrosoftEdge",
+                "Microsoft.WindowsStore_8wekyb3d8bbwe!App",
+                "Microsoft.Windows.Cortana_cw5n1h2txyewy!CortanaUI" };
+
+            return fullList.FindAll((package) =>
+            {
+                if (package.AppListEntry == 1)
+                {
+                    return false;
+                }
+
+                if (Array.IndexOf(packageRelativeIdsToFilterFromKioskMode, package.AppId) >= 0)
+                {
+                    return false;
+                }
+                return true;
+            });
+
         }
 
         /// <summary>

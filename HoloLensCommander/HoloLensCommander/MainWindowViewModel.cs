@@ -118,6 +118,8 @@ namespace HoloLensCommander
             this.CommonDeviceApps = new ObservableCollection<string>();
             this.RegisteredDevices = new ObservableCollection<DeviceMonitorControl>();
 
+            this.CommonKioskModeApps = new ObservableCollection<string>();
+
             this.localFolder = ApplicationData.Current.LocalFolder;
 
             this.SelectionFilter = DeviceFilters.All;
@@ -347,6 +349,36 @@ namespace HoloLensCommander
                             e.Message);
                     }
                 });
+        
+            this.RefreshKioskModeAppsCommand = new Command(
+                async (parameter) =>
+                {
+                    try
+                    {
+                        await this.RefreshKioskModeAppsAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        this.StatusMessage = string.Format(
+                            "Failed to refresh kiosk mode applications ({0})",
+                            e.Message);
+                    }
+                });
+
+            this.ApplyKioskModeSettingsCommand = new Command(
+                async (parameter) =>
+                {
+                    try
+                    {
+                        await this.ApplyKioskModeSettings();
+                    }
+                    catch (Exception e)
+                    {
+                        this.StatusMessage = string.Format(
+                            "Failed to apply kiosk mode settings ({0})",
+                            e.Message);
+                    }
+                });
 
             this.SaveMixedRealityFilesCommand = new Command(
                 async (parameter) =>
@@ -526,6 +558,39 @@ namespace HoloLensCommander
                 }
 
                 this.CanManageApps = true;
+            }
+        }
+
+        /// <summary>
+        /// Updates the UI with the list of kiosk mode applications installed on all registered devices.
+        /// </summary>
+        /// <param name="appNames">List of application ids</param>
+        private void UpdateCommonKioskModeApps(List<string> appIds)
+        {
+            // Get the currently selected application.
+            string currentSelection = this.SelectedKioskModeApp;
+
+            this.CommonKioskModeApps.Clear();
+            foreach (string name in appIds)
+            {
+                this.CommonKioskModeApps.Add(name);
+            }
+
+            //this.CanManageApps = false;
+            if (this.CommonKioskModeApps.Count > 0)
+            {
+                // Set the selected item.
+                if ((currentSelection != null) &&
+                    this.CommonKioskModeApps.Contains(currentSelection))
+                {
+                    this.SelectedKioskModeApp = currentSelection;
+                }
+                else
+                {
+                    this.SelectedKioskModeApp = this.CommonDeviceApps[0];
+                }
+
+                //this.CanManageApps = true;
             }
         }
     }

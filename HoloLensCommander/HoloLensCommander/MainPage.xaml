@@ -253,6 +253,50 @@
                         FontFamily="Segoe MDL2 Assets" FontSize="20" 
                         Canvas.Left="10" Canvas.Top="105"/>
                 </Canvas>
+
+                <Border HorizontalAlignment="Left" VerticalAlignment="Top"
+                    BorderBrush="Black" BorderThickness="1"
+                    Width="280" Margin="10,0,0,0">
+                    <StackPanel Padding="10,0,10,10">
+                        <TextBlock 
+                            Text="Kiosk Mode"
+                            FontSize="20"
+                            Width="260"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                            <ComboBox 
+                                ToolTipService.ToolTip="Kiosk Mode applications installed on the selected devices"
+                                ItemsSource="{Binding Path=CommonKioskModeApps}"
+                                SelectedItem="{Binding Path=SelectedKioskModeApp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                                Width="199"
+                                Canvas.Left="10" Canvas.Top="43" Height="41"/>
+                            <Button
+                                Content="&#xE777;" 
+                                ToolTipService.ToolTip="Refresh the list of kiosk mode applications"
+                                Command="{Binding Path=RefreshKioskModeAppsCommand}"
+                                IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                                HorizontalAlignment="Left" VerticalAlignment="Top" 
+                                FontFamily="Segoe MDL2 Assets" FontSize="20"
+                                Margin="10,0,0,0"
+                                Width="50" Height="40"
+                                />
+                        </StackPanel>
+                        <CheckBox
+                            IsChecked="{Binding Path=KioskModeEnabled,Mode=TwoWay}"
+                            FontSize="18"
+                            >Enable Kiosk Mode</CheckBox>
+                        <Button 
+                            Content="Apply Kiosk Mode Settings"
+                            ToolTipService.ToolTip="Applies the kiosk mode settings to the selected devices"
+                            Command="{Binding Path=ApplyKioskModeSettingsCommand}"
+                            IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                            HorizontalAlignment="Stretch"
+                            FontSize="20"
+                            Margin="0,10,0,0"
+                            Width="260" Height="50"
+                            />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
 
