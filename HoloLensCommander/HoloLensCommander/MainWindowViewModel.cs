@@ -380,6 +380,21 @@ namespace HoloLensCommander
                     }
                 });
 
+            this.ApplySleepSettingsCommand = new Command(
+                async (parameter) =>
+                {
+                    try
+                    {
+                        await this.ApplySleepSettings();
+                    }
+                    catch (Exception e)
+                    {
+                        this.StatusMessage = string.Format(
+                            "Failed to apply apply sleep settings ({0})",
+                            e.Message);
+                    }
+                });
+
             this.SaveMixedRealityFilesCommand = new Command(
                 async (parameter) =>
                 {

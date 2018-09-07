@@ -336,6 +336,17 @@ namespace HoloLensCommander
         }
 
         /// <summary>
+        /// Sets the sleep settings of the device
+        /// </summary>
+        /// <param name="sleepOnBatteryMinutes">Sleep delay when on battery power</param>
+        /// <param name="sleepPluggedInMinutes">Sleep delay when plugged in</param>
+        /// <returns></returns>
+        public async Task SetSleepSettingsAsync(int sleepOnBatteryMinutes, int sleepPluggedInMinutes)
+        {
+            await this.devicePortal.SetSleepSettings(sleepOnBatteryMinutes * 60, sleepPluggedInMinutes * 60);
+        }
+        
+        /// <summary>
         /// Shuts down this device.
         /// </summary>
         /// <returns>Task object used for tracking method completion.</returns>

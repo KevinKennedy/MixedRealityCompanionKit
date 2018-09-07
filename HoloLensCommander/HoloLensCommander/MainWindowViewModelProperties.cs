@@ -266,6 +266,46 @@ namespace HoloLensCommander
         }
 
         /// <summary>
+        /// State of sleep setting in main window
+        /// </summary>
+        private int sleepOnBatteryMinutes = 30;
+        public int SleepOnBatteryMinutes
+        {
+            get
+            {
+                return this.sleepOnBatteryMinutes;
+            }
+            set
+            {
+                if(this.sleepOnBatteryMinutes != value)
+                {
+                    this.sleepOnBatteryMinutes = value;
+                    this.NotifyPropertyChanged("SleepOnBatteryMinutes");
+                }
+            }
+        }
+
+        /// <summary>
+        /// State of sleep setting in main window
+        /// </summary>
+        private int sleepPluggedInMinutes = 30;
+        public int SleepPluggedInMinutes
+        {
+            get
+            {
+                return this.sleepPluggedInMinutes;
+            }
+            set
+            {
+                if (this.sleepPluggedInMinutes != value)
+                {
+                    this.sleepPluggedInMinutes = value;
+                    this.NotifyPropertyChanged("SleepPluggedInMinutes");
+                }
+            }
+        }
+
+        /// <summary>
         /// Gets the message to be displayed to the user.
         /// </summary>
         public string statusMessage = null;

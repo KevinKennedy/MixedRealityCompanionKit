@@ -517,12 +517,31 @@ namespace HoloLensCommander
             }
         }
 
-        /// <summary>
-        /// Removes any AppPackages from the list that cannot be the kiosk mode startup app
-        /// </summary>
-        /// <param name="fullList">List of all the app packages on the device</param>
-        /// <returns>Filtered list</returns>
-        private List<PackageInfo> KioskModeAppsFilter(List<PackageInfo> fullList)
+        internal async Task SetSleepSettingsAsync(int sleepOnBatteryMinutes, int sleepPluggedInMinutes)
+        {
+            if (this.IsConnected && this.IsSelected)
+            {
+                try
+                {
+                    await this.deviceMonitor.SetSleepSettingsAsync(sleepOnBatteryMinutes, sleepPluggedInMinutes);
+                }
+                catch (Exception e)
+                {
+                    this.StatusMessage = string.Format(
+                        "Unable to apply sleep settings to {0} - {1}",
+                        this.deviceMonitor.Name,
+                        e.Message);
+                }
+            }
+        }
+    
+
+    /// <summary>
+    /// Removes any AppPackages from the list that cannot be the kiosk mode startup app
+    /// </summary>
+    /// <param name="fullList">List of all the app packages on the device</param>
+    /// <returns>Filtered list</returns>
+    private List<PackageInfo> KioskModeAppsFilter(List<PackageInfo> fullList)
         {
             string[] packageRelativeIdsToFilterFromKioskMode = {
                 "HoloShell_cw5n1h2txyewy!HoloShell",

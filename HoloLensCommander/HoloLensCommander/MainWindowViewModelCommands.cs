@@ -520,6 +520,25 @@ namespace HoloLensCommander
             }
         }
 
+        public ICommand ApplySleepSettingsCommand
+        { get; private set; }
+
+        private async Task ApplySleepSettings()
+        {
+            YesNoMessageDialog messageDialog = new YesNoMessageDialog(
+                "Are you sure you want to apply sleep settings to the selected devices?");
+            if (MessageDialogButtonId.Yes != await messageDialog.ShowAsync())
+            {
+                return;
+            }
+
+            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
+            {
+                await monitor.ViewModel.SetSleepSettingsAsync(this.SleepOnBatteryMinutes, this.SleepPluggedInMinutes);
+            }
+
+        }
+
         /// <summary>
         /// Command used to save mixed reality files.
         /// </summary>
