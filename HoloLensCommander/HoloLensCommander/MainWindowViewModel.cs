@@ -395,6 +395,27 @@ namespace HoloLensCommander
                     }
                 });
 
+            this.BrowseForUploadFolderCommand = new Command(
+                async (parameter) =>
+                {
+                    await this.BrowseForUploadFolderAsync();
+                });
+
+            this.UploadFilesCommand = new Command(
+                async (parameter) =>
+                {
+                    try
+                    {
+                        await this.UploadFilesAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        this.StatusMessage = string.Format(
+                            "Failed to upload files ({0})",
+                            e.Message);
+                    }
+                });
+
             this.SaveMixedRealityFilesCommand = new Command(
                 async (parameter) =>
                 {

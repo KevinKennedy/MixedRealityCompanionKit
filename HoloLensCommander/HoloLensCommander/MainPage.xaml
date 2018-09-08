@@ -352,6 +352,54 @@
                             />
                     </StackPanel>
                 </Border>
+                <Border HorizontalAlignment="Left" VerticalAlignment="Top"
+                    BorderBrush="Black" BorderThickness="1"
+                    Width="280" Margin="10,5,0,5">
+                    <StackPanel Padding="10,0,10,10">
+                        <TextBlock 
+                            Text="File Upload"
+                            FontSize="20"
+                            Width="260"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Row="0" Grid.Column="0"
+                                Padding="0,9,0,0"
+                                Text="Upload folder: "
+                                />
+                            <TextBox
+                                Grid.Row="0" Grid.Column="1"
+                                ToolTipService.ToolTip="Folder that contains files to upload and a manifest saying where they go"
+                                IsReadOnly="True"
+                                Text="{Binding Path=UploadSpecFolderName, Mode=OneWay}"
+                                IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                                HorizontalAlignment="Stretch"
+                                />
+                            <Button
+                                Grid.Row="0" Grid.Column="2"
+                                Content="..."
+                                Command="{Binding Path=BrowseForUploadFolderCommand}"
+                                IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                                ToolTipService.ToolTip="Browse for the folder containing files to upload and a manifest of what goes where"
+                                FontSize="16"
+                                Margin="5,0,0,0"/>
+                        </Grid>
+                        <Button 
+                            Content="Upload files"
+                            ToolTipService.ToolTip="Uploads files to the selected devices"
+                            Command="{Binding Path=UploadFilesCommand}"
+                            IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                            HorizontalAlignment="Stretch"
+                            FontSize="20"
+                            Margin="0,10,0,0"
+                            Width="260" Height="50"
+                            />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
 

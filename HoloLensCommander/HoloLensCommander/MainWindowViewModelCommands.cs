@@ -536,7 +536,41 @@ namespace HoloLensCommander
             {
                 await monitor.ViewModel.SetSleepSettingsAsync(this.SleepOnBatteryMinutes, this.SleepPluggedInMinutes);
             }
+        }
 
+        public ICommand BrowseForUploadFolderCommand
+        { get; private set; }
+
+        private async Task BrowseForUploadFolderAsync()
+        {
+            var folderPicker = new FolderPicker();
+            folderPicker.FileTypeFilter.Add(".json");
+            folderPicker.CommitButtonText = "Select";
+
+            StorageFolder storageFolder = await folderPicker.PickSingleFolderAsync();
+            if (storageFolder != null)
+            {
+                this.UploadFolder = storageFolder;
+                this.UploadFolderName = storageFolder.Path;
+            }
+        }
+
+        public ICommand UploadFilesCommand
+        { get; private set; }
+
+        private async Task UploadFilesAsync()
+        {
+            YesNoMessageDialog messageDialog = new YesNoMessageDialog(
+                "Are you sure you want to upload files to the selected devices?");
+            if (MessageDialogButtonId.Yes != await messageDialog.ShowAsync())
+            {
+                return;
+            }
+
+            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
+            {
+                await monitor.ViewModel.UploadFilesAsync(this.UploadFolder, false);
+            }
         }
 
         /// <summary>

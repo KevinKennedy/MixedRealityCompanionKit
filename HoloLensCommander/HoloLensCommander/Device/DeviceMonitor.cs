@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Tools.WindowsDevicePortal;
+using Windows.Storage;
 using Windows.UI.Core;
 
 namespace HoloLensCommander
@@ -160,7 +161,7 @@ namespace HoloLensCommander
         {
             if (this.devicePortal != null)
             {
-                this.devicePortal.AppInstallStatus += DevicePortal_AppInstallStatus;
+                this.devicePortal.AppInstallStatus -= DevicePortal_AppInstallStatus;
                 this.devicePortal = null;
             }
 

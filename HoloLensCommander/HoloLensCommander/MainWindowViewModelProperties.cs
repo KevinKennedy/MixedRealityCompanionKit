@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Windows.Storage;
 
 namespace HoloLensCommander
 {
@@ -304,6 +305,47 @@ namespace HoloLensCommander
                 }
             }
         }
+
+        /// <summary>
+        /// Name of file that defines what files to upload
+        /// </summary>
+        private string uploadFolderName;
+        public string UploadFolderName
+        {
+            get
+            {
+                return this.uploadFolderName;
+            }
+            set
+            {
+                if(this.uploadFolderName != value)
+                {
+                    this.uploadFolderName = value;
+                    this.NotifyPropertyChanged("UploadFolderName");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Location of files to upload and a manifest saying what goes where
+        /// </summary>
+        private StorageFolder uploadFolder;
+        public StorageFolder UploadFolder
+        {
+            get
+            {
+                return this.uploadFolder;
+            }
+            set
+            {
+                if (this.uploadFolder != value)
+                {
+                    this.uploadFolder = value;
+                    this.NotifyPropertyChanged("UploadFolder");
+                }
+            }
+        }
+
 
         /// <summary>
         /// Gets the message to be displayed to the user.

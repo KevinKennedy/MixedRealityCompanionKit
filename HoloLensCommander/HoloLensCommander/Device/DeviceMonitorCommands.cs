@@ -10,6 +10,8 @@ using Windows.Security.Cryptography.Certificates;
 using Windows.UI.Core;
 using Microsoft.Tools.WindowsDevicePortal;
 using static Microsoft.Tools.WindowsDevicePortal.DevicePortal;
+using Windows.Storage;
+using System.Diagnostics;
 
 namespace HoloLensCommander
 {
@@ -346,6 +348,25 @@ namespace HoloLensCommander
             await this.devicePortal.SetSleepSettings(sleepOnBatteryMinutes * 60, sleepPluggedInMinutes * 60);
         }
         
+        internal async Task UploadFilesAsync(StorageFolder uploadStorageFolder, bool forceOverwrite)
+        {
+            // parse the upload spec
+            var uploadSpec = await FileTransferSpec.LoadFromFolderAsync(uploadStorageFolder);
+
+            // get data from the device about what files are there
+            await uploadSpec.GatherFileData(forceOverwrite,
+                async (knownFolderId, subPath, packageFullName) => {
+                    return await this.devicePortal.GetFolderContentsAsync(knownFolderId, subPath, packageFullName);
+            });
+
+            // upload files that need to be updated
+            await uploadSpec.UploadFiles(
+                async (knownFolderId, filepath, subPath, packageFullName) => {
+                    await Task.Run(
+                        () => this.devicePortal.UploadFileAsync(knownFolderId, filepath, subPath, packageFullName));
+                });
+        }
+
         /// <summary>
         /// Shuts down this device.
         /// </summary>
