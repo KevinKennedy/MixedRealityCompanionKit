@@ -82,6 +82,7 @@ namespace HoloLensCommander
                             {
                                 fileDetails.ExistsOnRemote = true;
                                 fileDetails.RemoteSizeInBytes = fileOrFolderInformation.SizeInBytes;
+                                break;
                             }
                         }
                     }
