@@ -375,7 +375,7 @@
                                 Grid.Row="0" Grid.Column="1"
                                 ToolTipService.ToolTip="Folder that contains files to upload and a manifest saying where they go"
                                 IsReadOnly="True"
-                                Text="{Binding Path=UploadSpecFolderName, Mode=OneWay}"
+                                Text="{Binding Path=UploadFolderName, Mode=TwoWay}"
                                 IsEnabled="{Binding Path=HaveRegisteredDevices}"
                                 HorizontalAlignment="Stretch"
                                 />

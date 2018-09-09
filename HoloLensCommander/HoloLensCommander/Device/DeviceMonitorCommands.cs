@@ -348,23 +348,69 @@ namespace HoloLensCommander
             await this.devicePortal.SetSleepSettings(sleepOnBatteryMinutes * 60, sleepPluggedInMinutes * 60);
         }
         
-        internal async Task UploadFilesAsync(StorageFolder uploadStorageFolder, bool forceOverwrite)
+        public async Task UploadFilesAsync(StorageFolder uploadStorageFolder, bool forceOverwrite)
         {
-            // parse the upload spec
-            var uploadSpec = await FileTransferSpec.LoadFromFolderAsync(uploadStorageFolder);
+            this.NotifyUploadStatus("Starting File Upload");
 
-            // get data from the device about what files are there
-            await uploadSpec.GatherFileData(forceOverwrite,
-                async (knownFolderId, subPath, packageFullName) => {
-                    return await this.devicePortal.GetFolderContentsAsync(knownFolderId, subPath, packageFullName);
-            });
+            try {
+                // parse the upload spec
+                var uploadSpec = await FileTransferSpec.LoadFromFolderAsync(uploadStorageFolder);
 
-            // upload files that need to be updated
-            await uploadSpec.UploadFiles(
-                async (knownFolderId, filepath, subPath, packageFullName) => {
-                    await Task.Run(
-                        () => this.devicePortal.UploadFileAsync(knownFolderId, filepath, subPath, packageFullName));
-                });
+                this.NotifyUploadStatus("Retrieving file data from device");
+
+                // get data from the device about what files are there
+                await uploadSpec.GatherFileData(forceOverwrite,
+                    async (knownFolderId, subPath, packageFullName) => {
+                        return await this.devicePortal.GetFolderContentsAsync(knownFolderId, subPath, packageFullName);
+                    });
+
+                this.NotifyUploadStatus("Uploading files");
+
+                // upload files that need to be updated
+                await uploadSpec.UploadFiles(
+                    async (knownFolderId, filepath, subPath, packageFullName) => {
+                        this.NotifyUploadStatus($"Uploading {filepath}");
+                        await Task.Run(
+                            () => this.devicePortal.UploadFileAsync(knownFolderId, filepath, subPath, packageFullName));
+                    });
+
+                this.NotifyUploadStatus("File upload completed");
+            }
+            catch (Exception e)
+            {
+                var dpException = e as DevicePortalException;
+                string message;
+
+                if(dpException != null)
+                {
+                    message = $"File upload failed: {dpException.Reason} - {e.Message}";
+                }
+                else
+                {
+                    message = $"File upload failed: {e.Message}";
+                }
+                this.NotifyUploadStatus(message);
+            }
+
+        }
+
+        private void NotifyUploadStatus(string status)
+        {
+            if (!this.dispatcher.HasThreadAccess)
+            {
+                // Assigning the return value of RunAsync to a Task object to avoid 
+                // warning 4014 (call is not awaited).
+                Task t = this.dispatcher.RunAsync(
+                    CoreDispatcherPriority.Normal,
+                    () =>
+                    {
+                        this.NotifyUploadStatus(status);
+                    }).AsTask();
+                return;
+            }
+
+            Debug.WriteLine($"NotifyUploadStatus: {status}");
+            this.FileUploadStatus?.Invoke(this, status);
         }
 
         /// <summary>

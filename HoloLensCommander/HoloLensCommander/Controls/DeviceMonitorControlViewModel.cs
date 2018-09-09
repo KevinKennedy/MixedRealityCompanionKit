@@ -88,6 +88,7 @@ namespace HoloLensCommander
             this.deviceMonitor.HeartbeatLost += Device_HeartbeatLost;
             this.deviceMonitor.HeartbeatReceived += Device_HeartbeatReceived;
             this.deviceMonitor.AppInstallStatus += DeviceMonitor_AppInstallStatus;
+            this.deviceMonitor.FileUploadStatus += DeviceMonitor_FileUploadStatus;
 
             this.SetFilter();
 
@@ -120,6 +121,7 @@ namespace HoloLensCommander
             this.deviceMonitor.HeartbeatLost -= Device_HeartbeatLost;
             this.deviceMonitor.HeartbeatReceived -= Device_HeartbeatReceived;
             this.deviceMonitor.AppInstallStatus -= DeviceMonitor_AppInstallStatus;
+            this.deviceMonitor.FileUploadStatus -= DeviceMonitor_FileUploadStatus;
             this.deviceMonitor.Dispose();
             this.deviceMonitor = null;
 
@@ -543,12 +545,9 @@ namespace HoloLensCommander
                 {
                     await this.deviceMonitor.UploadFilesAsync(uploadStorageFolder, forceOverwrite);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    this.StatusMessage = string.Format(
-                        "Unable to upload files to {0} - {1}",
-                        this.deviceMonitor.Name,
-                        e.Message);
+                    // UploadFilesAsync already updates status so just eat the exception
                 }
             }
         }
@@ -750,6 +749,18 @@ namespace HoloLensCommander
             ApplicationInstallStatusEventArgs args)
         {
             this.StatusMessage = args.Message;
+        }
+
+        /// <summary>
+        /// Handles the FileUploadStatus event.
+        /// </summary>
+        /// <param name="sender">The object which sent this event.</param>
+        /// <param name="args">Event arguments.</param>
+        private void DeviceMonitor_FileUploadStatus(
+            DeviceMonitor sender,
+            string message)
+        {
+            this.StatusMessage = message;
         }
 
         /// <summary>

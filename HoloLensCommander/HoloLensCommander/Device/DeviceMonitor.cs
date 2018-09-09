@@ -21,6 +21,15 @@ namespace HoloLensCommander
         ApplicationInstallStatusEventArgs args);
 
     /// <summary>
+    /// File upload status event handler
+    /// </summary>
+    /// <param name="sender">The DeviceMonitor sending the event.</param>
+    /// <param name="message">The status</param>
+    public delegate void DeviceMonitorFileUploadStatusEventHandler(
+        DeviceMonitor sender,
+        string message);
+
+    /// <summary>
     /// Delegate defining the method signature for handling the HeartbeatLost event.
     /// </summary>
     /// <param name="sender">The object sending the event.</param>
@@ -98,7 +107,12 @@ namespace HoloLensCommander
         /// Event that is sent when the application install status has changed.
         /// </summary>
         public event DeviceMonitorAppInstallStatusEventHandler AppInstallStatus;
-        
+
+        /// <summary>
+        /// Event that is sent when file upload status changed
+        /// </summary>
+        public event DeviceMonitorFileUploadStatusEventHandler FileUploadStatus;
+
         /// <summary>
         /// Event that is sent when the heartbeat has been lost.
         /// </summary>
