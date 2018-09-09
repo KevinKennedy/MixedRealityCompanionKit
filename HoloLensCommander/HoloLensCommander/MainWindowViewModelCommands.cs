@@ -569,7 +569,7 @@ namespace HoloLensCommander
 
             foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
             {
-                await monitor.ViewModel.UploadFilesAsync(this.UploadFolder, false);
+                await monitor.ViewModel.UploadFilesAsync(this.UploadFolder, this.ForceOverwriteChecked);
             }
         }
 

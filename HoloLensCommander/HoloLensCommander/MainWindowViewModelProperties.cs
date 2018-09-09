@@ -326,6 +326,23 @@ namespace HoloLensCommander
             }
         }
 
+        private bool forceOverwriteChecked;
+        public bool ForceOverwriteChecked
+        {
+            get
+            {
+                return this.forceOverwriteChecked;
+            }
+            set
+            {
+                if(this.forceOverwriteChecked != value)
+                {
+                    this.forceOverwriteChecked = value;
+                    this.NotifyPropertyChanged("ForceOverwriteChecked");
+                }
+            }
+        }
+
         /// <summary>
         /// Location of files to upload and a manifest saying what goes where
         /// </summary>
