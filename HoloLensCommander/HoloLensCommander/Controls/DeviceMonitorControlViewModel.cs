@@ -491,7 +491,8 @@ namespace HoloLensCommander
 
                 if(result == ContentDialogResult.Primary)
                 {
-                    await this.SetKioskModeAsync(dialog.KioskModeEnabled, dialog.StartupAppPackageInfo.AppId);
+                    var appId = dialog.StartupAppPackageInfo == null ? null : dialog.StartupAppPackageInfo.AppId;
+                    await this.SetKioskModeAsync(dialog.KioskModeEnabled, appId);
                 }
             }
         }
@@ -512,9 +513,16 @@ namespace HoloLensCommander
                 }
                 catch (Exception e)
                 {
+                    string message = e.Message;
+                    var dpe = e as DevicePortalException;
+                    if(dpe != null)
+                    {
+                        message += " " + dpe.Reason;
+                    }
+                    
                     this.StatusMessage = string.Format(
                         "Unable to set kiosk mode - {0}",
-                        e.Message);
+                        message);
                 }
             }
         }
