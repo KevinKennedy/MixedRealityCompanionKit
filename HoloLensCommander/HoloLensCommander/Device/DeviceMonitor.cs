@@ -212,6 +212,7 @@ namespace HoloLensCommander
                     await this.UpdateIpd();
                     await this.UpdateThermalStage();
                     await this.UpdateKioskModeStatus();
+                    await this.UpdateRunningProcessList();
 
                     this.NotifyHeartbeatReceived();
                 }
@@ -352,6 +353,33 @@ namespace HoloLensCommander
                 // Not supported on this type of device.
             }
         }
+
+        /// <summary>
+        /// Updates the cached list of running processes
+        /// </summary>
+        /// <returns></returns>
+        private async Task UpdateRunningProcessList()
+        {
+            try
+            {
+                if (this.RetrieveRunningProcesses)
+                {
+                    this.RunningProcesses = await this.devicePortal.GetRunningProcessesAsync();
+                }
+            }
+            catch(Exception e)
+            {
+                string message = e.Message;
+                var dpe = e as DevicePortalException;
+                if(dpe != null)
+                {
+                    message = dpe.Reason + " - " + e.Message;
+                }
+
+                Debug.WriteLine("UpdateRunningProcessList: Failed:" + message);
+            }
+        }
+
 
         /// <summary>
         /// Updates the cached thermal data.

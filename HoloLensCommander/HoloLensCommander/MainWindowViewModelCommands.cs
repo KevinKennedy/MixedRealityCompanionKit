@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Xml.Serialization;
@@ -891,6 +893,119 @@ namespace HoloLensCommander
             }
         }
 
+        /// <summary>
+        /// Command to set the app that we monitor for each device
+        /// </summary>
+        public ICommand SetMonitoredAppCommand
+        { get; private set; }
+
+        private void SetMonitoredAppAsync()
+        {
+            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
+            {
+                if (monitor.ViewModel.IsSelected && monitor.ViewModel.IsConnected)
+                {
+                    Task t = monitor.ViewModel.StartAppMonitoring(this.SelectedApp as string);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Command to set the app that we monitor for each device
+        /// </summary>
+        public ICommand ClearMonitoredAppCommand
+        { get; private set; }
+
+        private void ClearMonitoredApp()
+        {
+            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
+            {
+                monitor.ViewModel.StopAppMonitoring();
+            }
+        }
+
+        /// <summary>
+        /// Command to generate a report about what app is sideloaded on what device
+        /// </summary>
+        public ICommand GenerateAppReportCommand
+        { get; private set; }
+
+        private async Task GenerateAppReportAsync()
+        {
+            List<string> allDevices = new List<string>();
+            List<string> noStatusDevices = new List<string>();
+            Dictionary<string, List<string>> appToDevice = new Dictionary<string, List<string>>();
+
+            this.StatusMessage = "App Report: Retrieving installed packages from devices";
+            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
+            {
+                string deviceName = monitor.ViewModel.Address + (string.IsNullOrEmpty(monitor.ViewModel.Name) ? string.Empty : $" ({monitor.ViewModel.Name})");
+                if(!monitor.ViewModel.IsConnected || !monitor.ViewModel.IsSelected)
+                {
+                    continue;
+                }
+
+                var packageFullNames = await monitor.ViewModel.GetInstalledSideloadedAppNamesAsync();
+
+                if (packageFullNames.Count > 0)
+                {
+
+                    allDevices.Add(deviceName);
+                    foreach (var packageFullName in packageFullNames)
+                    {
+                        List<string> deviceList;
+                        if (!appToDevice.TryGetValue(packageFullName, out deviceList))
+                        {
+                            deviceList = new List<string>();
+                            appToDevice[packageFullName] = deviceList;
+                        }
+                        deviceList.Add(deviceName);
+                    }
+                }
+                else
+                {
+                    noStatusDevices.Add(deviceName);
+                }
+            }
+
+            this.StatusMessage = "App Report: Generating report";
+            StringBuilder sb = new StringBuilder();
+
+            // Report: for each package, what device has it, what device does not
+            foreach(string packageFullName in appToDevice.Keys)
+            {
+                List<string> notInstalledOnList = new List<string>(allDevices);
+
+                sb.Append($"Package: {packageFullName}\r\n");
+                sb.Append("    Installed On:\r\n");
+                foreach(string deviceName in appToDevice[packageFullName])
+                {
+                    sb.Append($"        {deviceName}\r\n");
+                    notInstalledOnList.Remove(deviceName);
+                }
+                sb.Append("    Not Installed On:\r\n");
+                foreach(string deviceName in notInstalledOnList)
+                {
+                    sb.Append($"        {deviceName}\r\n");
+                }
+                sb.Append("\r\n");
+            }
+
+            sb.AppendLine("\r\nNoStatus devices:");
+            foreach (var deviceName in noStatusDevices)
+            {
+                sb.AppendLine($"    {deviceName}");
+            }
+
+            this.StatusMessage = "App Report: Complete";
+
+            var report = sb.ToString();
+            Debug.WriteLine(report);
+
+            ShowReportDialog dialog = new ShowReportDialog("App Report", report);
+            await dialog.ShowAsync();
+            
+        }
         /// <summary>
         /// Command indicating that the select all/none buttons should use the all devices filter.
         /// </summary>

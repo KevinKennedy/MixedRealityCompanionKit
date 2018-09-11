@@ -67,10 +67,10 @@
                 <Canvas
                     x:Name="applicationControls"
                     HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Width="280" Height="315" Margin="10,0,0,0">
+                    Width="280" Height="495" Margin="10,0,0,0">
                     <Border 
                         BorderBrush="Black" BorderThickness="1"
-                        Width="280" Height="305"/>
+                        Width="280" Height="485"/>
                     <TextBlock 
                         x:Name="commonAppsLabel" 
                         Text="Common Applications" 
@@ -144,6 +144,33 @@
                         FontSize="20"
                         Width="260" Height="50"
                         Canvas.Left="10" Canvas.Top="235"/>
+                    <Button 
+                        Content="Set Monitored App"
+                        ToolTipService.ToolTip="Sets the app whose status will be displayed for each device"
+                        Command="{Binding Path=SetMonitoredAppCommand}"
+                        IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Top" 
+                        FontSize="20"
+                        Width="260" Height="50"
+                        Canvas.Left="10" Canvas.Top="300"/>
+                    <Button 
+                        Content="Clear Monitored App"
+                        ToolTipService.ToolTip="Clears the app whose status will be displayed for each selected device"
+                        Command="{Binding Path=ClearMonitoredAppCommand}"
+                        IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Top" 
+                        FontSize="20"
+                        Width="260" Height="50"
+                        Canvas.Left="10" Canvas.Top="365"/>
+                    <Button 
+                        Content="Generate App Report"
+                        ToolTipService.ToolTip="Generates a report about the sideloaded aps for each selected device"
+                        Command="{Binding Path=GenerateAppReportCommand}"
+                        IsEnabled="{Binding Path=HaveRegisteredDevices}"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Top" 
+                        FontSize="20"
+                        Width="260" Height="50"
+                        Canvas.Left="10" Canvas.Top="430"/>
                 </Canvas>
                 <Canvas
                     x:Name="mixedRealityControls"

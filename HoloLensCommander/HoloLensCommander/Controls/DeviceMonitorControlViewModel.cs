@@ -68,6 +68,11 @@ namespace HoloLensCommander
         private bool oldIsSelected = false;
 
         /// <summary>
+        /// When we are monitoring an app, this is the full package name.
+        /// </summary>
+        private string monitoredAppFullName = null;
+
+        /// <summary>
         /// Event that is notified when a property value has changed.
         /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
@@ -201,6 +206,38 @@ namespace HoloLensCommander
 
             return appIds;
         }
+
+        /// <summary>
+        /// Queries the device for the names of all installed sideloaded apps.
+        /// </summary>
+        /// <returns>List of application names.</returns>
+        internal async Task<List<string>> GetInstalledSideloadedAppNamesAsync()
+        {
+            List<string> appFullNames = new List<string>();
+
+            if (this.IsConnected && this.IsSelected)
+            {
+                try
+                {
+                    AppPackages installedApps = await this.deviceMonitor.GetInstalledApplicationsAsync();
+
+                    foreach(PackageInfo app in installedApps.Packages)
+                    {
+                        if(app.IsSideloaded())
+                        {
+                            appFullNames.Add(app.FullName);
+                        }
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return appFullNames;
+        }
+
+
         /// <summary>
         /// Downloads mixed reality files from the device.
         /// </summary>
@@ -856,6 +893,31 @@ namespace HoloLensCommander
                 // HoloLens is likely the developer SKU, not the enterprise SKU
                 this.KioskModeState = "N/A";
             }
+
+            // Update the Monitored App UI state
+            if (string.IsNullOrEmpty(this.monitoredAppFullName))
+            {
+                // Hide monitored app UI
+                this.MonitoredAppRunningVisibility = Visibility.Collapsed;
+                this.MonitoredAppNotRunningVisibility = Visibility.Collapsed;
+            }
+            else
+            {
+                bool foundProcess = false;
+                RunningProcesses runningProcesses = this.deviceMonitor.RunningProcesses;
+
+                foreach(var process in runningProcesses.Processes)
+                {
+                    if(process.PackageFullName == this.monitoredAppFullName)
+                    {
+                        foundProcess = true;
+                        break;
+                    }
+                }
+
+                this.MonitoredAppRunningVisibility = foundProcess ? Visibility.Visible : Visibility.Collapsed;
+                this.MonitoredAppNotRunningVisibility = foundProcess ? Visibility.Collapsed : Visibility.Visible;
+            }
         }
 
         /// <summary>
@@ -1085,6 +1147,41 @@ namespace HoloLensCommander
         {
             ManualResetEvent resetEvent = data as ManualResetEvent;
             resetEvent.Set();
+        }
+
+        internal async Task StartAppMonitoring(string appName)
+        {
+            try
+            {
+                AppPackages installedApps = await this.deviceMonitor.GetInstalledApplicationsAsync();
+
+                this.monitoredAppFullName = null;
+                foreach (PackageInfo packageInfo in installedApps.Packages)
+                {
+                    if (appName == packageInfo.Name)
+                    {
+                        this.deviceMonitor.RetrieveRunningProcesses = true;
+                        this.monitoredAppFullName = packageInfo.FullName;
+                        break;
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                string message = e.Message;
+                var dpe = e as DevicePortalException;
+                if(dpe != null)
+                {
+                    message = $"{dpe.Reason} - {e.Message}";
+                }
+                this.StatusMessage = $"Monitoring failed: {message}";
+            }
+        }
+
+        internal void StopAppMonitoring()
+        {
+            this.monitoredAppFullName = null;
+            this.deviceMonitor.RetrieveRunningProcesses = false;
         }
     }
 }

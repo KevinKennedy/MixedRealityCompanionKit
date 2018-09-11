@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     d:DesignHeight="40"
-    d:DesignWidth="850">
+    d:DesignWidth="930">
 
     <UserControl.Resources>
         <Style TargetType="CheckBox">
@@ -187,8 +187,25 @@
                         <CompositeTransform ScaleX="1.0" ScaleY="0.8"/>
                     </Button.RenderTransform>
                 </Button>
-                <!--
+            </Grid>
+            <!--
                  -->
+            <Grid
+                Canvas.Left="850"
+                Width="66"
+                Height="40">
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontSize="10"
+                    Visibility="{Binding MonitoredAppRunningVisibility}"
+                    Text="Running" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontSize="10"
+                    Visibility="{Binding MonitoredAppNotRunningVisibility}"
+                    Text="Stopped" FontWeight="Bold" Foreground="Red"/>
             </Grid>
         </Canvas>
     </Grid>

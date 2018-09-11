@@ -174,6 +174,41 @@ namespace HoloLensCommander
             }
         }
 
+        private Visibility monitoredAppRunningVisibility = Visibility.Collapsed;
+        public Visibility MonitoredAppRunningVisibility
+        {
+            get
+            {
+                return this.monitoredAppRunningVisibility;
+            }
+
+            set
+            {
+                if(this.monitoredAppRunningVisibility != value)
+                {
+                    this.monitoredAppRunningVisibility = value;
+                    this.NotifyPropertyChanged("MonitoredAppRunningVisibility");
+                }
+            }
+        }
+
+        private Visibility monitoredAppNotRunningVisibility = Visibility.Collapsed;
+        public Visibility MonitoredAppNotRunningVisibility
+        {
+            get
+            {
+                return this.monitoredAppNotRunningVisibility;
+            }
+
+            set
+            {
+                if (this.monitoredAppNotRunningVisibility != value)
+                {
+                    this.monitoredAppNotRunningVisibility = value;
+                    this.NotifyPropertyChanged("MonitoredAppNotRunningVisibility");
+                }
+            }
+        }
         /// <summary>
         /// Gets or sets a value specifying whether or not a connection has been established to this device.
         /// </summary>

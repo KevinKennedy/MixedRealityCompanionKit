@@ -147,6 +147,9 @@
     <Compile Include="Dialogs\SetKioskModeDialogViewModel.cs" />
     <Compile Include="Dialogs\SettingsDialogViewModel.cs" />
     <Compile Include="Dialogs\SettingsDialogViewModelProperties.cs" />
+    <Compile Include="Dialogs\ShowReportDialog.xaml.cs">
+      <DependentUpon>ShowReportDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Dialogs\TagDeviceDialog.xaml.cs">
       <DependentUpon>TagDeviceDialog.xaml</DependentUpon>
     </Compile>
@@ -225,6 +228,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Dialogs\SetKioskModeDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\ShowReportDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

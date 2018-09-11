@@ -100,7 +100,28 @@ namespace HoloLensCommander
         /// </summary>
         public KioskModeStatus KioskModeStatus
         { get; private set; } = new DevicePortal.KioskModeStatus(); // default to null object that says it's not supported.
-        
+
+        public RunningProcesses RunningProcesses
+        { get; private set; } = new DevicePortal.RunningProcesses(); // default to empty list
+
+        private bool retrieveRunningProcesses = false;
+        public bool RetrieveRunningProcesses
+        {
+            get
+            {
+                return retrieveRunningProcesses;
+            }
+            set
+            {
+                this.retrieveRunningProcesses = value;
+                if (!retrieveRunningProcesses)
+                {
+                    // Empty list
+                    this.RunningProcesses = new DevicePortal.RunningProcesses();
+                }
+            }
+        }
+
         /// <summary>
         /// Get or set the cached name of the connected device.
         /// </summary>
