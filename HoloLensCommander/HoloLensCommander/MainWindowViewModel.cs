@@ -530,19 +530,6 @@ namespace HoloLensCommander
                     }
                 });
 
-
-            this.SetMonitoredAppCommand = new Command(
-                (parameter) =>
-                {
-                    this.SetMonitoredAppAsync();
-                });
-
-            this.ClearMonitoredAppCommand = new Command(
-                (parameter) =>
-                {
-                    this.ClearMonitoredApp();
-                });
-
             this.GenerateAppReportCommand = new Command(
                 async (parameter) =>
                 {

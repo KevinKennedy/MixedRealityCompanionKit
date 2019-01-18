@@ -894,37 +894,6 @@ namespace HoloLensCommander
         }
 
         /// <summary>
-        /// Command to set the app that we monitor for each device
-        /// </summary>
-        public ICommand SetMonitoredAppCommand
-        { get; private set; }
-
-        private void SetMonitoredAppAsync()
-        {
-            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
-            {
-                if (monitor.ViewModel.IsSelected && monitor.ViewModel.IsConnected)
-                {
-                    Task t = monitor.ViewModel.StartAppMonitoring(this.SelectedApp as string);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Command to set the app that we monitor for each device
-        /// </summary>
-        public ICommand ClearMonitoredAppCommand
-        { get; private set; }
-
-        private void ClearMonitoredApp()
-        {
-            foreach (DeviceMonitorControl monitor in this.GetCopyOfRegisteredDevices())
-            {
-                monitor.ViewModel.StopAppMonitoring();
-            }
-        }
-
-        /// <summary>
         /// Command to generate a report about what app is sideloaded on what device
         /// </summary>
         public ICommand GenerateAppReportCommand

@@ -188,25 +188,6 @@
                     </Button.RenderTransform>
                 </Button>
             </Grid>
-            <!--
-                 -->
-            <Grid
-                Canvas.Left="850"
-                Width="66"
-                Height="40">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="10"
-                    Visibility="{Binding MonitoredAppRunningVisibility}"
-                    Text="Running" />
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="10"
-                    Visibility="{Binding MonitoredAppNotRunningVisibility}"
-                    Text="Stopped" FontWeight="Bold" Foreground="Red"/>
-            </Grid>
         </Canvas>
     </Grid>
 </Page>

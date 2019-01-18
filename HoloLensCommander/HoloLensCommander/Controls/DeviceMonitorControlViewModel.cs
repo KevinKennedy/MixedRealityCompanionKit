@@ -68,11 +68,6 @@ namespace HoloLensCommander
         private bool oldIsSelected = false;
 
         /// <summary>
-        /// When we are monitoring an app, this is the full package name.
-        /// </summary>
-        private string monitoredAppFullName = null;
-
-        /// <summary>
         /// Event that is notified when a property value has changed.
         /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
@@ -893,31 +888,6 @@ namespace HoloLensCommander
                 // HoloLens is likely the developer SKU, not the enterprise SKU
                 this.KioskModeState = "N/A";
             }
-
-            // Update the Monitored App UI state
-            if (string.IsNullOrEmpty(this.monitoredAppFullName))
-            {
-                // Hide monitored app UI
-                this.MonitoredAppRunningVisibility = Visibility.Collapsed;
-                this.MonitoredAppNotRunningVisibility = Visibility.Collapsed;
-            }
-            else
-            {
-                bool foundProcess = false;
-                RunningProcesses runningProcesses = this.deviceMonitor.RunningProcesses;
-
-                foreach(var process in runningProcesses.Processes)
-                {
-                    if(process.PackageFullName == this.monitoredAppFullName)
-                    {
-                        foundProcess = true;
-                        break;
-                    }
-                }
-
-                this.MonitoredAppRunningVisibility = foundProcess ? Visibility.Visible : Visibility.Collapsed;
-                this.MonitoredAppNotRunningVisibility = foundProcess ? Visibility.Collapsed : Visibility.Visible;
-            }
         }
 
         /// <summary>
@@ -1079,7 +1049,6 @@ namespace HoloLensCommander
             }
         }
 
-
         /// <summary>
         /// Monitors running processes and when the specified id is no longer running, update's the status message ui.
         /// </summary>
@@ -1118,13 +1087,13 @@ namespace HoloLensCommander
                     runningProcesses = await this.deviceMonitor.GetRunningProcessesAsync();
                     processIsRunning = runningProcesses.Contains(processId);
                 }
-                while(processIsRunning);
+                while (processIsRunning);
 
-                    MarshalStatusMessageUpdate(string.Format(
-                        "{0} has exited",
-                        appName));
+                MarshalStatusMessageUpdate(string.Format(
+                    "{0} has exited",
+                    appName));
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 MarshalStatusMessageUpdate(string.Format(
                     "Cannot determine the execution state of {0} - {1}",
@@ -1149,39 +1118,5 @@ namespace HoloLensCommander
             resetEvent.Set();
         }
 
-        internal async Task StartAppMonitoring(string appName)
-        {
-            try
-            {
-                AppPackages installedApps = await this.deviceMonitor.GetInstalledApplicationsAsync();
-
-                this.monitoredAppFullName = null;
-                foreach (PackageInfo packageInfo in installedApps.Packages)
-                {
-                    if (appName == packageInfo.Name)
-                    {
-                        this.deviceMonitor.RetrieveRunningProcesses = true;
-                        this.monitoredAppFullName = packageInfo.FullName;
-                        break;
-                    }
-                }
-            }
-            catch(Exception e)
-            {
-                string message = e.Message;
-                var dpe = e as DevicePortalException;
-                if(dpe != null)
-                {
-                    message = $"{dpe.Reason} - {e.Message}";
-                }
-                this.StatusMessage = $"Monitoring failed: {message}";
-            }
-        }
-
-        internal void StopAppMonitoring()
-        {
-            this.monitoredAppFullName = null;
-            this.deviceMonitor.RetrieveRunningProcesses = false;
-        }
     }
 }
