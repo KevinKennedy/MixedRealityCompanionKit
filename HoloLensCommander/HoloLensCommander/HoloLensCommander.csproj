@@ -112,6 +112,7 @@
     <Compile Include="Device\DeviceMonitor.cs" />
     <Compile Include="Device\DeviceMonitorCommands.cs" />
     <Compile Include="Device\DeviceMonitorProperties.cs" />
+    <Compile Include="Device\JobQueue.cs" />
     <Compile Include="Dialogs\ConnectToDeviceDialog.xaml.cs">
       <DependentUpon>ConnectToDeviceDialog.xaml</DependentUpon>
     </Compile>
@@ -262,7 +263,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
-      <Version>5.1.0</Version>
+      <Version>6.1.9</Version>
     </PackageReference>
     <PackageReference Include="WindowsDevicePortalWrapper">
       <Version>0.0.0.6</Version>
