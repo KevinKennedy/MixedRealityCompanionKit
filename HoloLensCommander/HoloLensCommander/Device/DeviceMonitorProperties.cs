@@ -20,7 +20,7 @@ namespace HoloLensCommander
         {
             get
             {
-                return this.devicePortal.Address;
+                return (this.devicePortal == null) ? string.Empty : this.devicePortal.Address;
             }
         }
 
@@ -28,15 +28,19 @@ namespace HoloLensCommander
         {
             get 
             {
-                return this.devicePortalConnection.Connection;
+                return (this.devicePortal == null) ? null : this.devicePortalConnection.Connection;
             }
         }
 
         /// <summary>
+        /// Most recently reported status of the device portal connection
+        /// </summary>
+        public DeviceConnectionStatus DeviceConnectionStatus { get; private set; } = DeviceConnectionStatus.None;
+
+        /// <summary>
         /// Returns the most recently cached battery state data.
         /// </summary>
-        public BatteryState BatteryState
-        { get; private set; }
+        public BatteryState BatteryState { get; private set; }
 
         /// <summary>
         /// Returns the family of the attached device.
@@ -45,64 +49,23 @@ namespace HoloLensCommander
         {
             get
             {
-                return this.devicePortal.DeviceFamily;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the current heartbeat interval, in seconds.
-        /// </summary>
-        private float heartbeatInterval;
-        public float HeartbeatInterval
-        {
-            get
-            {
-                return this.heartbeatInterval;
-            }
-
-            set
-            {
-                if (this.heartbeatInterval != value)
-                {
-                    if ((value > Settings.MaxHeartbeatInterval) ||
-                        (value < Settings.MinHeartbeatInterval))
-                    {
-                        throw new ArgumentOutOfRangeException(
-                            string.Format(
-                            "HeartbeatInterval must be between {0} and {1}, inclusive.",
-                            Settings.MinHeartbeatInterval,
-                            Settings.MaxHeartbeatInterval));
-                    }
-
-                    this.heartbeatInterval = value;
-
-                    if (this.heartbeatTimerRunning)
-                    {
-                        // Force a heartbeat check now.
-                        // We want the new interval to take effect immediately.
-
-                        // Assigning the return value of CheckHeartbeatAsync to a Task object to avoid 
-                        // warning 4014 (call is not awaited).
-                        Task t = this.CheckHeartbeatAsync();
-                    }
-                }
+                return (this.devicePortal == null) ? string.Empty : this.devicePortal.DeviceFamily;
             }
         }
 
         /// <summary>
         /// Returns the most recently cached value of the user's interpupilary distance.
         /// </summary>
-        public float Ipd
-        { get; private set; }
+        public float Ipd { get; private set; }
 
         /// <summary>
         /// Returns the status of Kiosk mode on this device
         /// </summary>
         public KioskModeStatus KioskModeStatus
-        { get; private set; } = new DevicePortal.KioskModeStatus(); // default to null object that says it's not supported.
+            { get; private set; } = new DevicePortal.KioskModeStatus(); // default to null object that says it's not supported.
 
         public RunningProcesses RunningProcesses
-        { get; private set; } = new DevicePortal.RunningProcesses(); // default to empty list
+            { get; private set; } = new DevicePortal.RunningProcesses(); // default to empty list
 
         private bool retrieveRunningProcesses = false;
         public bool RetrieveRunningProcesses
@@ -125,22 +88,7 @@ namespace HoloLensCommander
         /// <summary>
         /// Get or set the cached name of the connected device.
         /// </summary>
-        private string machineName = "";
-        public string MachineName
-        {
-            get
-            {
-                return this.machineName;
-            }
-
-            private set
-            {
-                if (this.machineName != value)
-                {
-                    this.machineName = value;
-                }
-            }
-        }
+        public string MachineName { get; private set; } = string.Empty;
 
         /// <summary>
         /// Returns the version of the operating system.
@@ -149,27 +97,25 @@ namespace HoloLensCommander
         {
             get
             {
-                return this.devicePortal.OperatingSystemVersion;
+                return (this.devicePortal == null) ? string.Empty : this.devicePortal.OperatingSystemVersion;
             }
         }
 
         /// <summary>
         /// Returns the most recently cached device name.
         /// </summary>
-        public string Name
-        { get; private set; }
+        public string Name { get; private set; }
 
         /// <summary>
         /// Returns the most recently cached device network (ssid) name.
         /// </summary>
-        public string NetworkName
-        { get; private set; }
+        public string NetworkName { get; private set; }
 
         public DevicePortalPlatforms Platform
         {
             get
             {
-                return this.devicePortal.Platform;
+                return (this.devicePortal == null) ? DevicePortalPlatforms.Unknown : this.devicePortal.Platform;
             }
         }
 
@@ -177,15 +123,14 @@ namespace HoloLensCommander
         {
             get
             {
-                return this.devicePortal.PlatformName;
+                return (this.devicePortal == null) ? string.Empty : this.devicePortal.PlatformName;
             }
         }
 
         /// <summary>
         /// Returns the most recently cached thermal stage.
         /// </summary>
-        public ThermalStages ThermalStage
-        { get; private set; }
+        public ThermalStages ThermalStage { get; private set; }
 
     }
 }

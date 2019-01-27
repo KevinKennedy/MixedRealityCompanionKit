@@ -21,123 +21,6 @@ namespace HoloLensCommander
     public partial class DeviceMonitor
     {
         /// <summary>
-        /// Connects to a device.
-        /// </summary>
-        /// <param name="options">Options that specify how the connection is to be established.</param>
-        /// <returns></returns>
-        public async Task ConnectAsync(
-            ConnectOptions options)
-        {
-            this.connectOptions = options;
-
-            string address = this.connectOptions.Address.ToLower();
-
-            if (!address.StartsWith("http"))
-            {
-                string scheme = "https";
-
-                if (string.Equals(address, DefaultConnectionAddress) ||
-                    string.Equals(address, DefaultConnectionAddressAsIp))
-                {
-                    scheme = "http";
-                }
-
-                address = string.Format(
-                    "{0}://{1}",
-                    scheme,
-                    address);
-            }
-
-            if (this.connectOptions.ConnectingToDesktopPC)
-            {
-                string s = address.Substring(address.IndexOf("//"));
-                if (!s.Contains(":"))
-                {
-                    // Append the default Windows Device Portal port for Desktop PC connections.
-                    address += ":50443";
-                }
-            }
-
-            this.devicePortalConnection = new DefaultDevicePortalConnection(
-                    address,
-                    this.connectOptions.UserName,
-                    this.connectOptions.Password);
-            this.devicePortal = new DevicePortal(this.devicePortalConnection);
-
-            await this.CheckHeartbeatAsync();
-        }
-
-        /// <summary>
-        /// Establish a connection to the device.
-        /// </summary>
-        /// <returns></returns>
-        /// <returns>Task object used for tracking method completion.</returns>
-        internal async Task EstablishConnection()
-        {
-            try
-            {
-                Certificate certificate = null;
-
-                if (!this.connectOptions.UseInstalledCertificate)
-                {
-                    // Get the device certificate
-                    certificate = await this.devicePortal.GetRootDeviceCertificateAsync(true);
-                }
-
-                // Establish the connection to the device.
-                this.devicePortal.ConnectionStatus += DevicePortal_ConnectionStatus;
-                Task t = this.devicePortal.ConnectAsync(
-                    this.connectOptions.Ssid,
-                    this.connectOptions.NetworkKey,
-                    updateConnection: this.connectOptions.UpdateConnection,
-                    manualCertificate: certificate);
-            }
-            catch
-            {
-                this.firstContact = false;
-            }
-        }
-
-        /// <summary>
-        /// Handles the ConnectionStatus event.
-        /// </summary>
-        /// <param name="sender">The object which sent this event.</param>
-        /// <param name="args">Event arguments.</param>
-        private void DevicePortal_ConnectionStatus(
-            DevicePortal sender, 
-            DeviceConnectionStatusEventArgs args)
-        {
-            if (args.Status == DeviceConnectionStatus.Connected)
-            {
-                // Connection successfully established.
-                this.firstContact = true;
-                this.devicePortal = sender;
-                this.devicePortal.AppInstallStatus += DevicePortal_AppInstallStatus;
-                this.devicePortal.ConnectionStatus -= DevicePortal_ConnectionStatus;
-
-                if (this.connectOptions.DeployNameToDevice)
-                {
-                    Task.Run(
-                        async () =>
-                        {
-                            if (await this.SetDeviceNameAsync(this.connectOptions.Name))
-                            {
-                                await this.RebootAsync();
-                            }
-                        });
-                }
-            }
-            else if (args.Status == DeviceConnectionStatus.Failed)
-            {
-                // Connection failed.
-                this.firstContact = false;
-                this.devicePortal.ConnectionStatus -= DevicePortal_ConnectionStatus;
-
-                throw new Exception(args.Message);
-            }
-        }
-
-        /// <summary>
         /// Deletes a mixed reality file from the device.
         /// </summary>
         /// <param name="fileName">The name of the file to be deleted./param>
@@ -145,17 +28,6 @@ namespace HoloLensCommander
         public async Task DeleteMixedRealityFile(string fileName)
         {
             await this.devicePortal.DeleteMrcFileAsync(fileName);
-        }
-
-        /// <summary>
-        /// Disconnects from the device by stopping the heartbeat.
-        /// </summary>
-        public void Disconnect()
-        {
-            // Stop the timer.
-            this.heartbeatTimer.Change(
-                Timeout.Infinite,
-                Timeout.Infinite);
         }
 
         /// <summary>
@@ -294,10 +166,6 @@ namespace HoloLensCommander
         public async Task RebootAsync()
         {
             await this.devicePortal.RebootAsync();
-
-            // Force re-establishing the connection.
-            // This is needed in case the device's name has been changed.
-            this.firstContact = false;
         }
 
         /// <summary>
@@ -352,7 +220,8 @@ namespace HoloLensCommander
         {
             this.NotifyUploadStatus("Starting File Upload");
 
-            try {
+            try
+            {
                 // parse the upload spec
                 var uploadSpec = await FileTransferSpec.LoadFromFolderAsync(uploadStorageFolder);
 
@@ -370,6 +239,7 @@ namespace HoloLensCommander
                 await uploadSpec.UploadFiles(
                     async (knownFolderId, filepath, subPath, packageFullName) => {
                         this.NotifyUploadStatus($"Uploading {filepath}");
+                        // TODO - why the Task.Run here?
                         await Task.Run(
                             () => this.devicePortal.UploadFileAsync(knownFolderId, filepath, subPath, packageFullName));
                     });
@@ -533,7 +403,7 @@ namespace HoloLensCommander
             await this.devicePortal.UninstallApplicationAsync(packageName);
         }
 
-        private void DevicePortal_AppInstallStatus(
+        private void DevicePortalAppInstallStatus(
             DevicePortal sender, 
             ApplicationInstallStatusEventArgs args)
         {

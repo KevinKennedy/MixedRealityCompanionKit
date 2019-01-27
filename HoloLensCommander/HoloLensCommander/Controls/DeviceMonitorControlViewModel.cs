@@ -85,8 +85,7 @@ namespace HoloLensCommander
 
             this.firstContact = false;
             this.deviceMonitor = monitor;
-            this.deviceMonitor.HeartbeatLost += Device_HeartbeatLost;
-            this.deviceMonitor.HeartbeatReceived += Device_HeartbeatReceived;
+            this.deviceMonitor.Updated += this.DeviceMonitorUpdated;
             this.deviceMonitor.AppInstallStatus += DeviceMonitor_AppInstallStatus;
             this.deviceMonitor.FileUploadStatus += DeviceMonitor_FileUploadStatus;
 
@@ -118,8 +117,10 @@ namespace HoloLensCommander
         /// </remarks>
         public void Dispose()
         {
+            this.deviceMonitor.Updated -= this.DeviceMonitorUpdated;
+#if NO
             this.deviceMonitor.HeartbeatLost -= Device_HeartbeatLost;
-            this.deviceMonitor.HeartbeatReceived -= Device_HeartbeatReceived;
+#endif
             this.deviceMonitor.AppInstallStatus -= DeviceMonitor_AppInstallStatus;
             this.deviceMonitor.FileUploadStatus -= DeviceMonitor_FileUploadStatus;
             this.deviceMonitor.Dispose();
@@ -804,89 +805,63 @@ namespace HoloLensCommander
         }
 
         /// <summary>
-        /// Handles the HeartbeatLost event.
+        /// Handles the DeviceMonitorUpdated event.
         /// </summary>
         /// <param name="sender">The object which sent this event.</param>
-        private void Device_HeartbeatLost(DeviceMonitor sender)
+        private void DeviceMonitorUpdated(DeviceMonitor sender)
         {
-            this.IsConnected = false;
+            this.IsConnected = sender.DeviceConnectionStatus == DeviceConnectionStatus.Connected;
 
-            this.StatusMessage = HeartbeatLostMessage;
-
-            // Handle whether or not we were previously selected
-            if (!this.oldIsSelected &&
-                this.IsSelected)
+            if (this.IsConnected)
             {
-                this.IsSelected = false;
-                this.oldIsSelected = true;
-            }
+                // Did we recover from a heartbeat loss?
+                if (this.StatusMessage == HeartbeatLostMessage)
+                {
+                    this.ClearStatusMessage();
+                }
 
-            // Update the heartbeat based UI
-            this.PowerIndicator = OnBatteryLabel;
-            this.BatteryLevel = "--";
-            this.ThermalStatus = Visibility.Collapsed;
-            this.Ipd = "--";
-            this.KioskModeState = "--";
-        }
+                if (this.Address != this.deviceMonitor.Address)
+                {
+                    // Update the device address display.
+                    this.Address = this.deviceMonitor.Address;
+                    ((DeviceMonitorControlViewModel)(this.deviceMonitorControl.DataContext)).Address = this.Address;
 
-        /// <summary>
-        /// Handles the HeartbeatReceived event.
-        /// </summary>
-        /// <param name="sender">The object which sent this event.</param>
-        private void Device_HeartbeatReceived(DeviceMonitor sender)
-        {
-            this.IsConnected = true;
+                    // Re-save the collection...
+                    this.deviceMonitorControl.NotifyTagChanged();
+                }
 
-            // Did we recover from a heartbeat loss?
-            if (this.StatusMessage == HeartbeatLostMessage)
-            {
-                this.ClearStatusMessage();
-            }
+                // Update the UI
+                this.SetFilter();
+                this.PowerIndicator = sender.BatteryState.IsOnAcPower ? OnAcPowerLabel : OnBatteryLabel;
+                this.BatteryLevel = string.Format("{0}%", sender.BatteryState.Level.ToString("#.00"));
+                if (this.deviceMonitor.Platform == DevicePortalPlatforms.HoloLens)
+                {
+                    this.ThermalStatus = (sender.ThermalStage == ThermalStages.Normal) ? Visibility.Collapsed : Visibility.Visible;
+                    this.Ipd = sender.Ipd.ToString();
+                }
 
-            // Handle whether or not we were previously selected
-            if (this.oldIsSelected &&
-                !this.IsSelected)
-            {
-                this.IsSelected = true;
-                this.oldIsSelected = false;
-            }
-
-            // Was this the first time we received a heartbeat?
-            if (!this.firstContact)
-            {
-                // Cause common apps to be refreshed.
-                this.deviceMonitorControl.NotifySelectedChanged();
-                this.firstContact = true;
-            }
-
-            if (this.Address != this.deviceMonitor.Address)
-            {             
-                // Update the device address display.
-                this.Address = this.deviceMonitor.Address;
-                ((DeviceMonitorControlViewModel)(this.deviceMonitorControl.DataContext)).Address = this.Address;
-
-                // Re-save the collection...
-                this.deviceMonitorControl.NotifyTagChanged();
-            }
-                       
-            // Update the UI
-            this.SetFilter();
-            this.PowerIndicator = sender.BatteryState.IsOnAcPower ? OnAcPowerLabel : OnBatteryLabel;
-            this.BatteryLevel = string.Format("{0}%", sender.BatteryState.Level.ToString("#.00"));
-            if (this.deviceMonitor.Platform == DevicePortalPlatforms.HoloLens)
-            {
-                this.ThermalStatus = (sender.ThermalStage == ThermalStages.Normal) ? Visibility.Collapsed : Visibility.Visible;
-                this.Ipd = sender.Ipd.ToString();
-            }
-
-            if (sender.KioskModeStatus.StatusAvailable)
-            {
-                this.KioskModeState = sender.KioskModeStatus.KioskModeEnabled ? "Yes" : "No";
+                if (sender.KioskModeStatus.StatusAvailable)
+                {
+                    this.KioskModeState = sender.KioskModeStatus.KioskModeEnabled ? "Yes" : "No";
+                }
+                else
+                {
+                    // HoloLens is likely the developer SKU, not the enterprise SKU
+                    this.KioskModeState = "N/A";
+                }
             }
             else
             {
-                // HoloLens is likely the developer SKU, not the enterprise SKU
-                this.KioskModeState = "N/A";
+                // We are not connected
+
+                this.StatusMessage = HeartbeatLostMessage;
+
+                // Update the heartbeat based UI
+                this.PowerIndicator = OnBatteryLabel;
+                this.BatteryLevel = "--";
+                this.ThermalStatus = Visibility.Collapsed;
+                this.Ipd = "--";
+                this.KioskModeState = "--";
             }
         }
 

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Tools.WindowsDevicePortal;
+using Windows.Security.Cryptography.Certificates;
 using Windows.Storage;
 using Windows.UI.Core;
 
@@ -30,17 +31,10 @@ namespace HoloLensCommander
         string message);
 
     /// <summary>
-    /// Delegate defining the method signature for handling the HeartbeatLost event.
+    /// Delegate defining the method signature for handling the DeviceMonitorUpdated event.
     /// </summary>
     /// <param name="sender">The object sending the event.</param>
-    public delegate void HeartbeatLostEventHandler(
-        DeviceMonitor sender);
-
-    /// <summary>
-    /// Delegate defining the method signature for handling the HeartbeatLost event.
-    /// </summary>
-    /// <param name="sender">The object sending the event.</param>
-    public delegate void HeartbeatReceivedEventHandler(
+    public delegate void DeviceMonitorUpdatedEventHandler(
         DeviceMonitor sender);
 
     /// <summary>
@@ -89,19 +83,15 @@ namespace HoloLensCommander
         private DevicePortal devicePortal;
 
         /// <summary>
-        /// Has a successful heartbeat been received from the device?
+        /// Set to true when we are trying to connect.  Prevents multiple
+        /// simultanious connection attempts.
         /// </summary>
-        private bool firstContact;
+        private bool isConnecting = false;
 
         /// <summary>
-        /// The timer managing the heartbeat.
+        /// Used to cancel the heartbeat
         /// </summary>
-        private Timer heartbeatTimer;
-
-        /// <summary>
-        /// False if the heartbeat timer is currently suspended.
-        /// </summary>
-        public bool heartbeatTimerRunning;
+        private CancellationTokenSource heartbeatCancellationTokenSource = new CancellationTokenSource();
 
         /// <summary>
         /// Event that is sent when the application install status has changed.
@@ -114,49 +104,69 @@ namespace HoloLensCommander
         public event DeviceMonitorFileUploadStatusEventHandler FileUploadStatus;
 
         /// <summary>
-        /// Event that is sent when the heartbeat has been lost.
-        /// </summary>
-        public event HeartbeatLostEventHandler HeartbeatLost;
-
-        /// <summary>
         /// Event that is sent when the heartbeat has been received.
         /// </summary>
-        public event HeartbeatReceivedEventHandler HeartbeatReceived;
+        public event DeviceMonitorUpdatedEventHandler Updated;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DeviceMonitor" /> class.
         /// </summary>
-        public DeviceMonitor(CoreDispatcher dispatcher) : 
-            this(
-            dispatcher, 
-            Settings.DefaultHeartbeatInterval)
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DeviceMonitor" /> class.
-        /// </summary>
-        /// <param name="heartbeatInterval">The time, in seconds, between heartbeat checks.</param>
-        public DeviceMonitor(
-            CoreDispatcher dispatcher, 
-            float heartbeatInterval)
+        public DeviceMonitor(CoreDispatcher dispatcher, ConnectOptions connectOptions)
         {
             if (dispatcher == null)
             {
                 throw new NullReferenceException("The argument dispatcher cannot be null.");
             }
 
+            if(connectOptions == null)
+            {
+                throw new NullReferenceException("The argument connectOptions cannot be null.");
+            }
+
             this.dispatcher = dispatcher;
-            this.HeartbeatInterval = heartbeatInterval;
+            this.connectOptions = connectOptions;
 
-            this.firstContact = false;
+            var heartbeatTask = this.dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () => { await HeartbeatAsync(); });
+        }
 
-            // Create the timer, but do not start it.
-            this.heartbeatTimer = new Timer(
-                HeartbeatCallback,
-                null,
-                Timeout.Infinite,
-                Timeout.Infinite);
+        private async Task HeartbeatAsync()
+        {
+            CancellationToken cancellationToken = this.heartbeatCancellationTokenSource.Token;
+
+            while(true)
+            {
+                try
+                {
+                    await this.EnsureConnectionAsync(cancellationToken);
+
+                    this.MachineName = await this.GetMachineNameAsync();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await this.UpdateBatteryStatus();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await this.UpdateIpd();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await this.UpdateThermalStage();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await this.UpdateKioskModeStatus();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await this.UpdateRunningProcessList();
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                catch (TaskCanceledException)
+                {
+                    // Only bail if we were canceled explicitly
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine($"DeviceMonitor.HeartbeatAsync - ate exception: {e.ToString()}");
+                }
+
+                Debug.Assert(this.dispatcher.HasThreadAccess); // we should always be on the UI thread for sending events
+                this.Updated?.Invoke(this);
+
+                await Task.Delay(TimeSpan.FromSeconds(5.0), cancellationToken); // TODO: Make this timeout configurable
+            }
         }
 
         /// <summary>
@@ -173,133 +183,148 @@ namespace HoloLensCommander
         /// </summary>
         public void Dispose()
         {
+            this.heartbeatCancellationTokenSource.Cancel();
+
             if (this.devicePortal != null)
             {
-                this.devicePortal.AppInstallStatus -= DevicePortal_AppInstallStatus;
+                this.devicePortal.ConnectionStatus -= this.DevicePortalConnectionStatus;
+                this.devicePortal.AppInstallStatus -= this.DevicePortalAppInstallStatus;
                 this.devicePortal = null;
             }
-
-            // Release the resources we manage.
-            this.heartbeatTimer?.Dispose();
-            this.heartbeatTimerRunning = false;
-            this.heartbeatTimer = null;
 
             // Suppress finalization to avoid attempting to clean up twice.
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// Checks for the heartbeat and updates cached information.
-        /// </summary>
-        /// <returns>Task object used for tracking method completion.</returns>
-        private async Task CheckHeartbeatAsync()
+        private string FixupMachineAddress(string address)
         {
+            address = address.ToLower();
+
+            // Insert http if needed
+            if (!address.StartsWith("http"))
+            {
+                string scheme = "https";
+
+                if (string.Equals(address, DefaultConnectionAddress) ||
+                    string.Equals(address, DefaultConnectionAddressAsIp))
+                {
+                    scheme = "http";
+                }
+
+                address = string.Format(
+                    "{0}://{1}",
+                    scheme,
+                    address);
+            }
+
+            if (this.connectOptions.ConnectingToDesktopPC)
+            {
+                string s = address.Substring(address.IndexOf("//"));
+                if (!s.Contains(":"))
+                {
+                    // Append the default Windows Device Portal port for Desktop PC connections.
+                    address += ":50443";
+                }
+            }
+
+            return address;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>Note that we let exceptions leave this function.  We depend on caller for any retry</remarks>
+        private async Task EnsureConnectionAsync(CancellationToken cancellationToken)
+        {
+            // We should always be on the UI thread
+            Debug.Assert(this.dispatcher.HasThreadAccess);
+
+            // Make sure we're not trying multiple connections.
+            // This logic assumes one thread.  There will be a race condition
+            // with the isConnecting field if multiple threads are executing this.
+            if(this.isConnecting)
+            {
+                // we're already trying to connect on another task.  Wait
+                await WaitForCondition(TimeSpan.FromSeconds(2.0), cancellationToken, () => !this.isConnecting); // make this timeout configurable
+                if(this.isConnecting)
+                {
+                    // Someone else is still connecting so bail
+                    throw new TimeoutException("DeviceMonitor.EnsureConnectionAsync: someone else is taking too long to connect");
+                }
+            }
+            this.isConnecting = true;
+
             try
             {
-                this.SuspendHeartbeat();
-
-                try
+                if (this.devicePortalConnection == null)
                 {
-                    // Have connected to the device the first time?
-                    if (!this.firstContact)
+                    var address = FixupMachineAddress(this.connectOptions.Address);
+
+                    this.devicePortalConnection = new DefaultDevicePortalConnection(
+                            address,
+                            this.connectOptions.UserName,
+                            this.connectOptions.Password);
+                    this.devicePortal = new DevicePortal(this.devicePortalConnection);
+                    this.devicePortal.ConnectionStatus += DevicePortalConnectionStatus;
+                    this.devicePortal.AppInstallStatus += DevicePortalAppInstallStatus;
+                }
+
+                if (this.DeviceConnectionStatus != DeviceConnectionStatus.Connected || this.DeviceConnectionStatus != DeviceConnectionStatus.Connecting)
+                {
+                    Certificate certificate = null;
+
+                    if (!this.connectOptions.UseInstalledCertificate)
                     {
-                        // Try to connect now.
-                        await this.EstablishConnection();
+                        // Get the device certificate
+                        certificate = await this.devicePortal.GetRootDeviceCertificateAsync(true);
                     }
 
-                    this.MachineName = await this.GetMachineNameAsync();
-                    await this.UpdateBatteryStatus();
-                    await this.UpdateIpd();
-                    await this.UpdateThermalStage();
-                    await this.UpdateKioskModeStatus();
-                    await this.UpdateRunningProcessList();
-
-                    this.NotifyHeartbeatReceived();
+                    // Establish the connection to the device.
+                    // No way to cancel this :-|
+                    await this.devicePortal.ConnectAsync(
+                        ssid: this.connectOptions.Ssid,
+                        ssidKey: this.connectOptions.NetworkKey,
+                        updateConnection: this.connectOptions.UpdateConnection,
+                        manualCertificate: certificate);
                 }
-                catch
+            }
+            finally
+            {
+                this.isConnecting = false;
+            }
+        }
+
+        private void DevicePortalConnectionStatus(DevicePortal sender, DeviceConnectionStatusEventArgs args)
+        {
+            // This can get called back on random threads.  Marshal it back to the UI thread if needed
+
+            if (this.dispatcher.HasThreadAccess)
+            {
+                this.DeviceConnectionStatus = args.Status;
+                if(!this.isConnecting)
                 {
-                    this.NotifyHeartbeatLost();
+                    this.Updated?.Invoke(this);
                 }
-
-                // Resume the timer.
-                this.StartHeartbeat();
             }
-            catch
+            else
             {
-                // TODO: - investigate whether or not we ever hit this scenario
+                var _ = this.dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => { this.DevicePortalConnectionStatus(sender, args); });
             }
         }
 
-        /// <summary>
-        /// Called by the heartbeat timer.
-        /// </summary>
-        /// <param name="data">Not used.</param>
-        private void HeartbeatCallback(Object data)
+        private static async Task WaitForCondition(TimeSpan timeout, CancellationToken cancellationToken, Func<bool> condition)
         {
-            // Assigning the return value of CheckHeartbeatAsync to a Task object to avoid 
-            // warning 4014 (call is not awaited).
-            Task t = CheckHeartbeatAsync();
-        }
-
-        /// <summary>
-        /// Notifies registered listeners that the device heartbeat has been lost.
-        /// </summary>
-        private void NotifyHeartbeatLost()
-        {
-            if (!this.dispatcher.HasThreadAccess)
+            DateTime giveUpTime = DateTime.UtcNow;
+            while(!condition())
             {
-                // Assigning the return value of RunAsync to a Task object to avoid 
-                // warning 4014 (call is not awaited).
-                Task t = this.dispatcher.RunAsync(
-                    CoreDispatcherPriority.Normal,
-                    () =>
-                    {
-                        this.NotifyHeartbeatLost();
-                    }).AsTask();
-                return;
+                await Task.Delay(200, cancellationToken);
+                if(DateTime.UtcNow >= giveUpTime)
+                {
+                    // Maybe throw an exception instead>
+                    return;
+                }
             }
-
-            this.HeartbeatLost?.Invoke(this);
-        }
-
-        /// <summary>
-        /// Notifies registered listeners that the device heartbeat has been received.
-        /// </summary>
-        private void NotifyHeartbeatReceived()
-        {
-            if (!this.dispatcher.HasThreadAccess)
-            {
-                // Assigning the return value of RunAsync to a Task object to avoid 
-                // warning 4014 (call is not awaited).
-                Task t = this.dispatcher.RunAsync(
-                    CoreDispatcherPriority.Normal,
-                    () =>
-                    {
-                        this.NotifyHeartbeatReceived();
-                    }).AsTask();
-                return;
-            }
-
-            this.HeartbeatReceived?.Invoke(this);
-        }
-
-        /// <summary>
-        /// Starts/restarts the heartbeat timer by setting a non-infinite interval
-        /// </summary>
-        internal void StartHeartbeat()
-        {
-            this.UpdateHeartbeat(
-                (int)(this.HeartbeatInterval * 1000.0f));
-            this.heartbeatTimerRunning = true;
-        }
-
-        /// <summary>
-        /// Suspends the heartbeat timer by setting an infinite interval
-        /// </summary>
-        internal void SuspendHeartbeat()
-        {
-            this.UpdateHeartbeat(Timeout.Infinite);
-            this.heartbeatTimerRunning = false;
         }
 
         /// <summary>
@@ -310,18 +335,7 @@ namespace HoloLensCommander
         {
             this.BatteryState = await this.devicePortal.GetBatteryStateAsync();
         }
-
-        /// <summary>
-        /// Update the heartbeat timer's due time.
-        /// </summary>
-        /// <param name="dueTimeMs">Milliseconds for the timer to wait until the next tick.</param>
-        private void UpdateHeartbeat(int dueTimeMs)
-        {
-            this.heartbeatTimer.Change(
-                dueTimeMs,
-                Timeout.Infinite);
-        }
-
+        
         /// <summary>
         /// Updates the cached interpupilary distance data.
         /// </summary>

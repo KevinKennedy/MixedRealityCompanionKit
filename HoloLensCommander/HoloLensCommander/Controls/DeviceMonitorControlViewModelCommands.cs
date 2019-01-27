@@ -54,7 +54,7 @@ namespace HoloLensCommander
         /// </summary>
         internal void Disconnect()
         {
-            this.deviceMonitor.Disconnect();
+            this.deviceMonitor.Dispose();
             this.IsConnected = false;
             this.deviceMonitorControl.NotifyDisconnected();
         }
@@ -69,25 +69,14 @@ namespace HoloLensCommander
         }
 
         /// <summary>
-        /// Sets the underlying DeviceMonitor's heartbeat interval.
-        /// </summary>
-        /// <param name="heartbeatInterval">The time, in seconds between heartbeat checks.</param>
-        internal void SetHeartbeatInterval(float heartbeatInterval)
-        {
-            this.deviceMonitor.HeartbeatInterval = heartbeatInterval;
-        }
-
-        /// <summary>
         /// Command used to display the set ipd dialog.
         /// </summary>
-        public ICommand SetIpdCommand
-        { get; private set; }
+        public ICommand SetIpdCommand { get; private set; }
 
         /// <summary>
         /// Command used to setup kiosk mode on the HoloLens
         /// </summary>
-        public ICommand SetKioskModeCommand
-        { get; private set; }
+        public ICommand SetKioskModeCommand { get; private set; }
 
         /// <summary>
         /// Command used to display the set tag dialog.

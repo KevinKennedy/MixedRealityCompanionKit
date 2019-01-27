@@ -128,13 +128,12 @@ namespace HoloLensCommander
                 connectOptions.Address = DeviceMonitor.DefaultConnectionAddress;
             }
 
-            DeviceMonitor monitor = new DeviceMonitor(this.dispatcher);
+            DeviceMonitor monitor = new DeviceMonitor(this.dispatcher, connectOptions);
 
             this.StatusMessage = string.Format(
                 "Connecting to the device at {0}",
                 connectOptions.Address);
 
-            await monitor.ConnectAsync(connectOptions);
             this.StatusMessage = string.Empty;
 
             await this.RegisterDeviceAsync(
@@ -199,7 +198,10 @@ namespace HoloLensCommander
                 DeviceMonitorControlViewModel viewModel = (DeviceMonitorControlViewModel)monitor.DataContext;
                 if (viewModel.IsSelected)
                 {
+                    // TODO - some async dispose
+#if NO
                     monitor.Disconnect();
+#endif
                     this.RegisteredDevices.Remove(monitor);
                 }
             }
@@ -769,13 +771,6 @@ namespace HoloLensCommander
                 this.defaultSsid = settings.DefaultSsid;
                 this.defaultNetworkKey = settings.DefaultNetworkKey;
                 this.SaveApplicationSettings();
-
-                // Update the device monitors with the new heartbeat interval.
-                List<DeviceMonitorControl> registeredDevices = this.GetCopyOfRegisteredDevices();
-                foreach (DeviceMonitorControl monitor in registeredDevices)
-                {
-                    ((DeviceMonitorControlViewModel)monitor.DataContext).SetHeartbeatInterval(this.heartbeatInterval);
-                }
             }
         }
 
