@@ -169,6 +169,8 @@ namespace HoloLensCommander.Device
 
         public int RetrysLeft { get; private set; }
 
+        public TimeSpan RepeatDelay { get; private set; }
+
         public string DisplayStatus { get; private set; } = string.Empty;
 
         public JobStatus Status { get; private set; }
@@ -181,12 +183,13 @@ namespace HoloLensCommander.Device
         private CancellationTokenSource cancellationTokenSource;
         private Task task;
 
-        internal Job(string displayName, Func<Job, Task> handler, bool outOfBand, int retryCount)
+        internal Job(string displayName, Func<Job, Task> handler, bool outOfBand, int retryCount, TimeSpan repeatDelay)
         {
             this.DisplayName = displayName;
             this.handler = handler;
             this.OutOfBand = outOfBand;
             this.RetrysLeft = retryCount;
+            this.RepeatDelay = repeatDelay;
             this.cancellationTokenSource = new CancellationTokenSource();
         }
 
@@ -216,6 +219,10 @@ namespace HoloLensCommander.Device
             try
             {
                 await task;
+                if (this.RepeatDelay != TimeSpan.Zero)
+                {
+                    await Task.Delay(this.RepeatDelay, this.CancellationToken);
+                }
             }
             catch
             {
@@ -228,9 +235,14 @@ namespace HoloLensCommander.Device
             JobStatus newStatus = this.Status;
             string newDisplayStatus = null;
 
-            if (this.task.IsCanceled)
+            if (this.task.IsCanceled || this.cancellationTokenSource.IsCancellationRequested)
             {
                 newStatus = JobStatus.Canceled;
+            }
+            else if(this.RepeatDelay != TimeSpan.Zero)
+            {
+                // This is a repeating job so just keep it in the queue
+                newStatus = JobStatus.Queued;
             }
             else if(this.task.IsFaulted)
             {
@@ -256,9 +268,7 @@ namespace HoloLensCommander.Device
             }
 
             this.task = null;
-            this.cancellationTokenSource = null;
             this.ChangeStatus(newStatus, newDisplayStatus);
-
         }
 
         public void Cancel()
@@ -297,7 +307,12 @@ namespace HoloLensCommander.Device
 
         public void QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand = false, int retryCount = 1)
         {
-            var job = new Job(displayName, handler, outOfBand, retryCount);
+            this.QueueJob(displayName, handler, outOfBand, retryCount, TimeSpan.Zero);
+        }
+
+        public void QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand, int retryCount, TimeSpan repeatDelay)
+        {
+            var job = new Job(displayName, handler, outOfBand, retryCount, repeatDelay);
             job.StatusChanged += JobStatusChanged;
             this.jobs.Insert(0, job);
             job.OnJobQueued();
@@ -317,6 +332,15 @@ namespace HoloLensCommander.Device
         public void CancelJob(Job job)
         {
             if(this.jobs.Contains(job))
+            {
+                job.Cancel();
+            }
+        }
+
+        public void CancelAllJobs()
+        {
+            var jobArray = this.GetJobs();
+            foreach(var job in jobArray)
             {
                 job.Cancel();
             }

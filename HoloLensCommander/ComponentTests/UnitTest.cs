@@ -145,5 +145,42 @@ namespace ComponentTests
             log.AssertEquals("{1-Start}{1-Start}{1-Start}{1-Start}{1-Start}");
         }
 
+        static int JobRepeatCount = 0;
+
+        [TestMethod]
+        public async Task Repeating()
+        {
+            JobQueue queue = new JobQueue();
+            CheckLog log = new CheckLog();
+            DateTime timeoutTime = DateTime.UtcNow + TimeSpan.FromSeconds(3.0);
+
+            Func<Job, Task> jobHandler = async (job) =>
+            {
+                log.Log($"{job.DisplayName}-{JobRepeatCount}");
+                await Task.Delay(1, job.CancellationToken);
+                JobRepeatCount++;
+            };
+
+            JobRepeatCount = 0;
+            queue.QueueJob("1", jobHandler, false, 1, TimeSpan.FromSeconds(0.2));
+
+            while(JobRepeatCount < 4)
+            {
+                await Task.Delay(50);
+                if(DateTime.UtcNow >= timeoutTime)
+                {
+                    Assert.Fail("Test failed waiting for repeating job.");
+                }
+            }
+            var jobs = queue.GetJobs();
+            Assert.AreEqual(1, jobs.Length);
+            queue.CancelAllJobs();
+            await Task.Delay(50);
+            jobs = queue.GetJobs();
+            Assert.AreEqual(0, jobs.Length);
+
+
+            log.AssertEquals("{1-0}{1-1}{1-2}{1-3}");
+        }
     }
 }

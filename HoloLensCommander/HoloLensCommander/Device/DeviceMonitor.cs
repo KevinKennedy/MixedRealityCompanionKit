@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using HoloLensCommander.Device;
 using Microsoft.Tools.WindowsDevicePortal;
 using Windows.Security.Cryptography.Certificates;
 using Windows.Storage;
@@ -60,6 +61,12 @@ namespace HoloLensCommander
             };
 
         /// <summary>
+        /// Name of the heart beat job in the job queue.  Used
+        /// to cancel it when we are shutting down.
+        /// </summary>
+        private string heartbeatJobName = "heartbeat";
+
+        /// <summary>
         /// Options used to connect to this device.
         /// </summary>
         /// <remarks>
@@ -71,6 +78,11 @@ namespace HoloLensCommander
         /// Dispatcher that allows heartbeats to be marshaled appropriately.
         /// </summary>
         private CoreDispatcher dispatcher;
+
+        /// <summary>
+        /// Queue of operations being performed on the device
+        /// </summary>
+        private JobQueue jobQueue;
 
         /// <summary>
         /// Instance of the IDevicePortalConnection used to connect to this device.
@@ -87,11 +99,6 @@ namespace HoloLensCommander
         /// simultanious connection attempts.
         /// </summary>
         private bool isConnecting = false;
-
-        /// <summary>
-        /// Used to cancel the heartbeat
-        /// </summary>
-        private CancellationTokenSource heartbeatCancellationTokenSource = new CancellationTokenSource();
 
         /// <summary>
         /// Event that is sent when the application install status has changed.
@@ -124,49 +131,33 @@ namespace HoloLensCommander
             }
 
             this.dispatcher = dispatcher;
+            this.jobQueue = new JobQueue();
             this.connectOptions = connectOptions;
 
-            var heartbeatTask = this.dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () => { await HeartbeatAsync(); });
+            this.jobQueue.QueueJob(heartbeatJobName, HeartbeatJobHandler, true, 1, TimeSpan.FromSeconds(5.0));
         }
 
-        private async Task HeartbeatAsync()
+        private async Task HeartbeatJobHandler(Job job)
         {
-            CancellationToken cancellationToken = this.heartbeatCancellationTokenSource.Token;
+            CancellationToken cancellationToken = job.CancellationToken;
 
-            while(true)
-            {
-                try
-                {
-                    await this.EnsureConnectionAsync(cancellationToken);
+            await this.EnsureConnectionAsync(cancellationToken);
 
-                    this.MachineName = await this.GetMachineNameAsync();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await this.UpdateBatteryStatus();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await this.UpdateIpd();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await this.UpdateThermalStage();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await this.UpdateKioskModeStatus();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await this.UpdateRunningProcessList();
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-                catch (TaskCanceledException)
-                {
-                    // Only bail if we were canceled explicitly
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    Debug.WriteLine($"DeviceMonitor.HeartbeatAsync - ate exception: {e.ToString()}");
-                }
+            this.MachineName = await this.GetMachineNameAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+            await this.UpdateBatteryStatus();
+            cancellationToken.ThrowIfCancellationRequested();
+            await this.UpdateIpd();
+            cancellationToken.ThrowIfCancellationRequested();
+            await this.UpdateThermalStage();
+            cancellationToken.ThrowIfCancellationRequested();
+            await this.UpdateKioskModeStatus();
+            cancellationToken.ThrowIfCancellationRequested();
+            await this.UpdateRunningProcessList();
+            cancellationToken.ThrowIfCancellationRequested();
 
-                Debug.Assert(this.dispatcher.HasThreadAccess); // we should always be on the UI thread for sending events
-                this.Updated?.Invoke(this);
-
-                await Task.Delay(TimeSpan.FromSeconds(5.0), cancellationToken); // TODO: Make this timeout configurable
-            }
+            Debug.Assert(this.dispatcher.HasThreadAccess); // we should always be on the UI thread for sending events
+            this.Updated?.Invoke(this);
         }
 
         /// <summary>
@@ -183,7 +174,7 @@ namespace HoloLensCommander
         /// </summary>
         public void Dispose()
         {
-            this.heartbeatCancellationTokenSource.Cancel();
+            this.jobQueue.CancelAllJobs();
 
             if (this.devicePortal != null)
             {
