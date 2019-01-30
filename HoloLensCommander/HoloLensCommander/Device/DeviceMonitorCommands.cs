@@ -27,7 +27,10 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task DeleteMixedRealityFile(string fileName)
         {
-            await this.devicePortal.DeleteMrcFileAsync(fileName);
+            await this.jobQueue.QueueJob("DeleteMixedRealityFile",
+                async (job) => {
+                    await this.devicePortal.DeleteMrcFileAsync(fileName);
+                }).Task;
         }
 
         /// <summary>
@@ -63,22 +66,44 @@ namespace HoloLensCommander
             return appName;
         }
 
+        private async Task<T> QueuedJobHelper<T>(string displayName, Func<Task<T>> handler)
+        {
+            var queuedJob = this.jobQueue.QueueJob(displayName,
+                async (job) => {
+                    job.Result = await handler();
+                });
+            await queuedJob.Task;
+
+            return (T) queuedJob.Result;
+        }
+
+        private async Task QueuedJobHelper(string displayName, Func<Task> handler)
+        {
+            var queuedJob = this.jobQueue.QueueJob(displayName,
+                async (job) => {
+                    await handler();
+                });
+            await queuedJob.Task;
+        }
+
         /// <summary>
         /// Gets the collection of installed applications.
         /// </summary>
         /// <returns>AppPackages object describing the installed applications.</returns>
         public async Task<AppPackages> GetInstalledApplicationsAsync()
         {
-            return await this.devicePortal.GetInstalledAppPackagesAsync();
+            return await QueuedJobHelper("GetInstalledApplicationsAsync",
+                () => this.devicePortal.GetInstalledAppPackagesAsync());
         }
 
         /// <summary>
         /// Gets the name of the device.
         /// </summary>
         /// <returns>The device's name.</returns>
-        public async Task<string> GetMachineNameAsync()
+        private async Task UpdateMachineName()
         {
-            return await this.devicePortal.GetDeviceNameAsync();
+            this.MachineName = await QueuedJobHelper("UpdateMachineName",
+                () => this.devicePortal.GetDeviceNameAsync());
         }
 
         /// <summary>
@@ -88,9 +113,8 @@ namespace HoloLensCommander
         /// <returns>Byte array containing the file data.</returns>
         public async Task<byte[]> GetMixedRealityFileAsync(string fileName)
         {
-            return await this.devicePortal.GetMrcFileDataAsync(
-                fileName,
-                false);
+            return await QueuedJobHelper("GetMixedRealityFileAsync",
+                () => this.devicePortal.GetMrcFileDataAsync(fileName, false));
         }
 
         /// <summary>
@@ -99,7 +123,8 @@ namespace HoloLensCommander
         /// <returns>MrcFileList object describing the collection of files.</returns>
         public async Task<MrcFileList> GetMixedRealityFileListAsync()
         {
-            return await this.devicePortal.GetMrcFileListAsync();
+            return await QueuedJobHelper("GetMixedRealityFileListAsync",
+                () => this.devicePortal.GetMrcFileListAsync());
         }
 
         /// <summary>
@@ -109,10 +134,10 @@ namespace HoloLensCommander
         public Uri GetMixedRealityViewUri()
         {
             return this.devicePortal.GetLowResolutionMrcLiveStreamUri(
-                true,   // Include holograms.
-                true,   // Include color camera.
-                true,   // Include microphone.
-                true);  // Include application audio.
+                includeHolograms: true,
+                includeColorCamera: true,
+                includeMicrophone: true,
+                includeAudio: true);
         }
 
         /// <summary>
@@ -121,7 +146,8 @@ namespace HoloLensCommander
         /// <returns>AppPackages object describing the running processes.</returns>
         public async Task<RunningProcesses> GetRunningProcessesAsync()
         {
-            return await this.devicePortal.GetRunningProcessesAsync();
+            return await this.QueuedJobHelper("GetRunningProcessesAsync",
+                () => this.devicePortal.GetRunningProcessesAsync());
         }
 
         /// <summary>
@@ -131,8 +157,8 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task InstallApplicationAsync(AppInstallFiles installFiles)
         {
-            await Task.Run(
-                async () =>
+            await this.jobQueue.QueueJob("InstallApplicationAsync",
+                async (job) =>
                 {
                     string appName = await this.FindAppNameFromPackageName(installFiles.AppPackageFile.Name);
 
@@ -141,7 +167,7 @@ namespace HoloLensCommander
                         installFiles.AppPackageFile,
                         installFiles.AppDependencyFiles,
                         installFiles.AppCertificateFile);
-                });
+                }).Task;
         }
 
         /// <summary>
@@ -154,9 +180,8 @@ namespace HoloLensCommander
             string appId,
             string packageName)
         {
-            return await this.devicePortal.LaunchApplicationAsync(
-                appId,
-                packageName);
+            return await this.QueuedJobHelper("LaunchApplicationAsync",
+                () => this.devicePortal.LaunchApplicationAsync(appId, packageName));
         }
 
         /// <summary>
@@ -165,7 +190,8 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task RebootAsync()
         {
-            await this.devicePortal.RebootAsync();
+            await this.QueuedJobHelper("RebootAsync",
+                () => this.devicePortal.RebootAsync());
         }
 
         /// <summary>
@@ -178,7 +204,9 @@ namespace HoloLensCommander
         {
             if (string.Equals(this.MachineName, name)) { return false; }
 
-            await this.devicePortal.SetDeviceNameAsync(name);
+            await this.QueuedJobHelper("SetDeviceNameAsync",
+                () => this.devicePortal.SetDeviceNameAsync(name));
+
             this.MachineName = name;
 
             return true;
@@ -191,7 +219,7 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task SetIpd(float ipd)
         {
-            await this.devicePortal.SetInterPupilaryDistanceAsync(ipd);
+            await this.QueuedJobHelper("SetIpd", () => this.devicePortal.SetInterPupilaryDistanceAsync(ipd));
         }
 
         /// <summary>
@@ -202,7 +230,8 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task SetKioskModeAsync(bool kioskModeEnabled, string startupAppPackageName)
         {
-            await this.devicePortal.SetKioskModeSettingsAsync(kioskModeEnabled, startupAppPackageName);
+            await this.QueuedJobHelper("SetKioskModeAsync",
+                () => this.devicePortal.SetKioskModeSettingsAsync(kioskModeEnabled, startupAppPackageName));
         }
 
         /// <summary>
@@ -213,55 +242,61 @@ namespace HoloLensCommander
         /// <returns></returns>
         public async Task SetSleepSettingsAsync(int sleepOnBatteryMinutes, int sleepPluggedInMinutes)
         {
-            await this.devicePortal.SetSleepSettings(sleepOnBatteryMinutes * 60, sleepPluggedInMinutes * 60);
+            await this.QueuedJobHelper("SetSleepSettingsAsync",
+                () => this.devicePortal.SetSleepSettings(sleepOnBatteryMinutes * 60, sleepPluggedInMinutes * 60));
         }
         
         public async Task UploadFilesAsync(StorageFolder uploadStorageFolder, bool forceOverwrite)
         {
-            this.NotifyUploadStatus("Starting File Upload");
-
-            try
-            {
-                // parse the upload spec
-                var uploadSpec = await FileTransferSpec.LoadFromFolderAsync(uploadStorageFolder);
-
-                this.NotifyUploadStatus("Retrieving file data from device");
-
-                // get data from the device about what files are there
-                await uploadSpec.GatherFileData(forceOverwrite,
-                    async (knownFolderId, subPath, packageFullName) => {
-                        return await this.devicePortal.GetFolderContentsAsync(knownFolderId, subPath, packageFullName);
-                    });
-
-                this.NotifyUploadStatus("Uploading files");
-
-                // upload files that need to be updated
-                await uploadSpec.UploadFiles(
-                    async (knownFolderId, filepath, subPath, packageFullName) => {
-                        this.NotifyUploadStatus($"Uploading {filepath}");
-                        // TODO - why the Task.Run here?
-                        await Task.Run(
-                            () => this.devicePortal.UploadFileAsync(knownFolderId, filepath, subPath, packageFullName));
-                    });
-
-                this.NotifyUploadStatus("File upload completed");
-            }
-            catch (Exception e)
-            {
-                var dpException = e as DevicePortalException;
-                string message;
-
-                if(dpException != null)
+            await this.QueuedJobHelper("UploadFilesAsync",
+                async () =>
                 {
-                    message = $"File upload failed: {dpException.Reason} - {e.Message}";
-                }
-                else
-                {
-                    message = $"File upload failed: {e.Message}";
-                }
-                this.NotifyUploadStatus(message);
-            }
+                    this.NotifyUploadStatus("Starting File Upload");
 
+                    try
+                    {
+                        // parse the upload spec
+                        var uploadSpec = await FileTransferSpec.LoadFromFolderAsync(uploadStorageFolder);
+
+                        this.NotifyUploadStatus("Retrieving file data from device");
+
+                        // get data from the device about what files are there
+                        await uploadSpec.GatherFileData(forceOverwrite,
+                            async (knownFolderId, subPath, packageFullName) =>
+                            {
+                                return await this.devicePortal.GetFolderContentsAsync(knownFolderId, subPath, packageFullName);
+                            });
+
+                        this.NotifyUploadStatus("Uploading files");
+
+                        // upload files that need to be updated
+                        await uploadSpec.UploadFiles(
+                            async (knownFolderId, filepath, subPath, packageFullName) =>
+                            {
+                                this.NotifyUploadStatus($"Uploading {filepath}");
+                                // TODO - why the Task.Run here?
+                                await Task.Run(
+                                            () => this.devicePortal.UploadFileAsync(knownFolderId, filepath, subPath, packageFullName));
+                            });
+
+                        this.NotifyUploadStatus("File upload completed");
+                    }
+                    catch (Exception e)
+                    {
+                        var dpException = e as DevicePortalException;
+                        string message;
+
+                        if (dpException != null)
+                        {
+                            message = $"File upload failed: {dpException.Reason} - {e.Message}";
+                        }
+                        else
+                        {
+                            message = $"File upload failed: {e.Message}";
+                        }
+                        this.NotifyUploadStatus(message);
+                    }
+                });
         }
 
         private void NotifyUploadStatus(string status)
@@ -289,7 +324,8 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task ShutdownAsync()
         {
-            await this.devicePortal.ShutdownAsync();    
+            await this.QueuedJobHelper("ShutdownAsync", 
+                () => this.devicePortal.ShutdownAsync());    
         }
 
         /// <summary>
@@ -339,11 +375,13 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task StartMixedRealityRecordingAsync()
         {
-            await this.devicePortal.StartMrcRecordingAsync(
-                true,       // Include holograms.
-                true,       // Include color camera.
-                true,       // Include microphone audio.
-                true);      // Include application audio.
+            await this.QueuedJobHelper("StartMixedRealityRecordingAsync",
+                () => this.devicePortal.StartMrcRecordingAsync(
+                    includeHolograms: true,
+                    includeColorCamera: true,
+                    includeMicrophone: true,
+                    includeAudio: true)
+                );
         }
 
         /// <summary>
@@ -352,7 +390,8 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task StopMixedRealityRecordingAsync()
         {
-            await this.devicePortal.StopMrcRecordingAsync();
+            await this.QueuedJobHelper("StopMixedRealityRecordingAsync",
+                () => this.devicePortal.StopMrcRecordingAsync());
         }
 
         /// <summary>
@@ -361,26 +400,30 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task TerminateAllApplicationsAsync()
         {
-            RunningProcesses runningApps = await this.GetRunningProcessesAsync();
-
-            List<string> doNotClose = new List<string>();
-            doNotClose.AddRange(DoNotCloseApps);
-
-            foreach (DeviceProcessInfo processInfo in runningApps.Processes)
-            {
-                // Skip applications that should not be closed.
-                if (doNotClose.Contains(
-                    processInfo.Name, 
-                    StringComparer.OrdinalIgnoreCase))
+            await this.QueuedJobHelper("TerminateAllApplicationsAsync",
+                async () =>
                 {
-                    continue;
-                }
+                    RunningProcesses runningApps = await this.GetRunningProcessesAsync();
 
-                if (!string.IsNullOrWhiteSpace(processInfo.PackageFullName))
-                {
-                    await this.TerminateApplicationAsync(processInfo.PackageFullName);
-                }
-            }
+                    List<string> doNotClose = new List<string>();
+                    doNotClose.AddRange(DoNotCloseApps);
+
+                    foreach (DeviceProcessInfo processInfo in runningApps.Processes)
+                    {
+                        // Skip applications that should not be closed.
+                        if (doNotClose.Contains(
+                            processInfo.Name,
+                            StringComparer.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(processInfo.PackageFullName))
+                        {
+                            await this.TerminateApplicationAsync(processInfo.PackageFullName);
+                        }
+                    }
+                });
         }
 
         /// <summary>
@@ -390,7 +433,8 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task TerminateApplicationAsync(string packageName)
         {
-            await this.devicePortal.TerminateApplicationAsync(packageName) ;
+            await this.QueuedJobHelper("TerminateApplicationAsync",
+                () => this.devicePortal.TerminateApplicationAsync(packageName));
         }
 
         /// <summary>
@@ -400,7 +444,8 @@ namespace HoloLensCommander
         /// <returns>Task object used for tracking method completion.</returns>
         public async Task UninstallApplicationAsync(string packageName)
         {
-            await this.devicePortal.UninstallApplicationAsync(packageName);
+            await this.QueuedJobHelper("UninstallApplicationAsync",
+                () => this.devicePortal.UninstallApplicationAsync(packageName));
         }
 
         private void DevicePortalAppInstallStatus(

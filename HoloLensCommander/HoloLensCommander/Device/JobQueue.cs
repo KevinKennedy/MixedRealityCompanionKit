@@ -69,81 +69,6 @@ namespace HoloLensCommander.Device
    
     }
 
-    internal delegate void LogChangedEventHandler(ThreadAwareLog sender);
-
-    internal class ThreadAwareLog
-    {
-        public event LogChangedEventHandler LogChanged;
-
-        private CoreDispatcher dispatcher;
-        private object defaultLock = new object();
-        private List<string> stringList = new List<string>();
-
-        public ThreadAwareLog()
-        {
-            this.dispatcher = CoreWindow.GetForCurrentThread().Dispatcher;
-        }
-
-        public void Log(string format, params object[] args)
-        {
-            string message = string.Format(format, args);
-            lock(this.stringList)
-            {
-                this.stringList.Add(message);
-            }
-
-            if (!this.dispatcher.HasThreadAccess)
-            {
-                // We are on a different thread than the one we were created on.
-                // Do the notification on the creator thread
-                var _ = dispatcher.RunAsync(
-                    CoreDispatcherPriority.Normal,
-                    () =>
-                    {
-                        this.LogChanged?.Invoke(this);
-                    });
-            }
-            else
-            {
-                // We're on the thread we were created on so
-                // just send the notification
-                this.LogChanged?.Invoke(this);
-            }
-        }
-
-        public string[] GetLogAsArray()
-        {
-            string[] retval;
-            lock(this.stringList)
-            {
-                retval = this.stringList.ToArray();
-            }
-            return retval;
-        }
-
-        public string GetLogAsString()
-        {
-            var sb = new StringBuilder();
-
-            lock(this.stringList)
-            {
-                foreach(var s in this.stringList)
-                {
-                    sb.Append(s);
-                    sb.Append("\r\n");
-                }
-
-                // Remove the trailing /r/n
-                if (this.stringList.Count > 0)
-                {
-                    sb.Remove(sb.Length - 1, 2);
-                }
-            }
-     
-            return sb.ToString();
-        }
-    }
-
     public enum JobStatus
     {
         None = 0,
@@ -173,11 +98,32 @@ namespace HoloLensCommander.Device
 
         public string DisplayStatus { get; private set; } = string.Empty;
 
+        private Task jobTask = null;
+        public Task Task
+        {
+            get
+            {
+                if (this.jobTask == null)
+                {
+                    // Task with null action.  This is just to signal
+                    // to the outside world that everything having to 
+                    // do with this job is done.  We can't use the internal
+                    // task because it gets created multiple times for jobs
+                    // that retry or repeat.
+                    this.jobTask = new Task(() => { });
+                }
+
+                return this.jobTask;
+            }
+        }
+
         public JobStatus Status { get; private set; }
 
         public bool Completed { get { return this.Status == JobStatus.Canceled || this.Status == JobStatus.Failed || this.Status == JobStatus.Succeeded; } }
 
         public CancellationToken CancellationToken { get { return this.cancellationTokenSource.Token; } }
+
+        public object Result { get; set; }
 
         private Func<Job, Task> handler;
         private CancellationTokenSource cancellationTokenSource;
@@ -269,6 +215,14 @@ namespace HoloLensCommander.Device
 
             this.task = null;
             this.ChangeStatus(newStatus, newDisplayStatus);
+
+            if(this.Completed)
+            {
+                if(this.jobTask != null)
+                {
+                    this.jobTask.Start(); // is there a more direct way to do this?
+                }
+            }
         }
 
         public void Cancel()
@@ -305,18 +259,20 @@ namespace HoloLensCommander.Device
     {
         private List<Job> jobs = new List<Job>(4);
 
-        public void QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand = false, int retryCount = 1)
+        public Job QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand = false, int retryCount = 1)
         {
-            this.QueueJob(displayName, handler, outOfBand, retryCount, TimeSpan.Zero);
+            return this.QueueJob(displayName, handler, outOfBand, retryCount, TimeSpan.Zero);
         }
 
-        public void QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand, int retryCount, TimeSpan repeatDelay)
+        public Job QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand, int retryCount, TimeSpan repeatDelay)
         {
             var job = new Job(displayName, handler, outOfBand, retryCount, repeatDelay);
             job.StatusChanged += JobStatusChanged;
             this.jobs.Insert(0, job);
             job.OnJobQueued();
             this.ProcessQueue();
+
+            return job;
         }
 
         private void JobStatusChanged(Job job, JobStatus previousStatus, JobStatus newStatus)
@@ -348,7 +304,8 @@ namespace HoloLensCommander.Device
 
         private void ProcessQueue()
         {
-            bool haveRunningJob = false;
+            Job firstRunningRegularJob = null;
+            Job firstRunningOutOfBandJob = null;
             Job nextJobToRun = null;
 
             for(var index = this.jobs.Count - 1; index >= 0; index--)
@@ -363,33 +320,44 @@ namespace HoloLensCommander.Device
                 }
 
                 if(job.Status == JobStatus.Running)
-                {
-                    haveRunningJob = true;
+                { 
+                    if(!job.OutOfBand && firstRunningRegularJob == null)
+                    {
+                        firstRunningRegularJob = job;
+                    }
+                    else if(job.OutOfBand && firstRunningOutOfBandJob == null)
+                    {
+                        firstRunningOutOfBandJob = job;
+                    }
                 }
                 else if(job.Status == JobStatus.Queued)
                 {
                     if(nextJobToRun == null)
                     {
+                        // Job at the head of the queue is the next job to run
                         nextJobToRun = job;
                     }
                     else if(!nextJobToRun.OutOfBand && job.OutOfBand)
                     {
+                        // A queued job that's marked as out of band will be run
+                        // in favor of one that's not out of band
                         nextJobToRun = job;
                     }
                 }
             }
 
-            if(nextJobToRun != null)
+            if (nextJobToRun != null)
             {
-                if(haveRunningJob)
+                if (firstRunningOutOfBandJob == null && nextJobToRun.OutOfBand)
                 {
-                    if (nextJobToRun.OutOfBand)
-                    {
-                        nextJobToRun.Run();
-                    }
+                    // We don't have a running out of band job so run it
+                    // (you could argue that we should let multiple out of band jobs running
+                    // at the same time.)
+                    nextJobToRun.Run();
                 }
-                else
+                else if (firstRunningRegularJob == null && !nextJobToRun.OutOfBand)
                 {
+                    // we have no regular job running so run this one
                     nextJobToRun.Run();
                 }
             }

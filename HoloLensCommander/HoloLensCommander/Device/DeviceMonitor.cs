@@ -143,7 +143,7 @@ namespace HoloLensCommander
 
             await this.EnsureConnectionAsync(cancellationToken);
 
-            this.MachineName = await this.GetMachineNameAsync();
+            await this.UpdateMachineName();
             cancellationToken.ThrowIfCancellationRequested();
             await this.UpdateBatteryStatus();
             cancellationToken.ThrowIfCancellationRequested();
@@ -222,7 +222,8 @@ namespace HoloLensCommander
         }
 
         /// <summary>
-        /// 
+        /// Makes sure there is a connection to the device.  If device can't be contacted
+        /// it will throw.  Does not try to ping the device.
         /// </summary>
         /// <returns></returns>
         /// <remarks>Note that we let exceptions leave this function.  We depend on caller for any retry</remarks>
@@ -237,12 +238,8 @@ namespace HoloLensCommander
             if(this.isConnecting)
             {
                 // we're already trying to connect on another task.  Wait
-                await WaitForCondition(TimeSpan.FromSeconds(2.0), cancellationToken, () => !this.isConnecting); // make this timeout configurable
-                if(this.isConnecting)
-                {
-                    // Someone else is still connecting so bail
-                    throw new TimeoutException("DeviceMonitor.EnsureConnectionAsync: someone else is taking too long to connect");
-                }
+                await WaitForCondition(TimeSpan.FromSeconds(2.0), cancellationToken, () => !this.isConnecting);
+                // TODO: maybe make this timeout configurable
             }
             this.isConnecting = true;
 
@@ -304,29 +301,35 @@ namespace HoloLensCommander
             }
         }
 
+        /// <summary>
+        /// Helper function to wait for an expression to be true.
+        /// </summary>
+        /// <param name="timeout">Total time to wait before failing</param>
+        /// <param name="cancellationToken">the CancellationToken</param>
+        /// <param name="condition">condition to wait for</param>
+        /// <returns></returns>
         private static async Task WaitForCondition(TimeSpan timeout, CancellationToken cancellationToken, Func<bool> condition)
         {
             DateTime giveUpTime = DateTime.UtcNow;
-            while(!condition())
+            while (!condition())
             {
                 await Task.Delay(200, cancellationToken);
-                if(DateTime.UtcNow >= giveUpTime)
+                if (DateTime.UtcNow >= giveUpTime)
                 {
-                    // Maybe throw an exception instead>
-                    return;
+                    throw new TimeoutException("WaitForCondition - timed out");
                 }
             }
         }
 
-        /// <summary>
-        /// Updates the cached battery data.
-        /// </summary>
-        /// <returns>Task object used for tracking method completion.</returns>
-        private async Task UpdateBatteryStatus()
-        {
-            this.BatteryState = await this.devicePortal.GetBatteryStateAsync();
-        }
-        
+            /// <summary>
+            /// Updates the cached battery data.
+            /// </summary>
+            /// <returns>Task object used for tracking method completion.</returns>
+            private async Task UpdateBatteryStatus()
+            {
+                this.BatteryState = await this.devicePortal.GetBatteryStateAsync();
+            }
+
         /// <summary>
         /// Updates the cached interpupilary distance data.
         /// </summary>

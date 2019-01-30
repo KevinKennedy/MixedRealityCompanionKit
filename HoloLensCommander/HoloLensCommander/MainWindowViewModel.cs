@@ -627,7 +627,7 @@ namespace HoloLensCommander
                 {
                     this.SelectedKioskModeApp = currentSelection;
                 }
-                else
+                else if(this.CommonDeviceApps.Count > 0)
                 {
                     this.SelectedKioskModeApp = this.CommonDeviceApps[0];
                 }

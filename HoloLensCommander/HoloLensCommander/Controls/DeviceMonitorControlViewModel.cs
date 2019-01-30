@@ -58,16 +58,6 @@ namespace HoloLensCommander
         private DeviceMonitorControl deviceMonitorControl;
 
         /// <summary>
-        /// Have we received the first heartbeat.
-        /// </summary>
-        private bool firstContact;
-
-        /// <summary>
-        /// Indicates whether or not the monitor control was selected prior to loss of heartbeat.
-        /// </summary>
-        private bool oldIsSelected = false;
-
-        /// <summary>
         /// Event that is notified when a property value has changed.
         /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
@@ -83,7 +73,6 @@ namespace HoloLensCommander
         {
             this.deviceMonitorControl = control;
 
-            this.firstContact = false;
             this.deviceMonitor = monitor;
             this.deviceMonitor.Updated += this.DeviceMonitorUpdated;
             this.deviceMonitor.AppInstallStatus += DeviceMonitor_AppInstallStatus;
@@ -814,6 +803,8 @@ namespace HoloLensCommander
 
             if (this.IsConnected)
             {
+                this.Name = sender.Name;
+
                 // Did we recover from a heartbeat loss?
                 if (this.StatusMessage == HeartbeatLostMessage)
                 {
@@ -1017,7 +1008,8 @@ namespace HoloLensCommander
 
                 default:
                     this.Filter = DeviceFilters.None;
-                    this.DeviceTypeLabel = this.firstContact ? DeviceIsUnknownLabel : ConnectionNotEstablishedLabel;
+                    this.DeviceTypeLabel = this.deviceMonitor.DeviceConnectionStatus == DeviceConnectionStatus.None ?
+                        ConnectionNotEstablishedLabel : DeviceIsUnknownLabel;
                     this.IpdVisibility = Visibility.Collapsed;
                     this.KioskModeVisiblity = Visibility.Collapsed;
                     break;

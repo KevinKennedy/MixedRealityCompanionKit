@@ -184,6 +184,7 @@
     <Compile Include="Dialogs\YesNoMessageDialog.cs" />
     <Compile Include="Utilities\FileTransferSpec.cs" />
     <Compile Include="Utilities\Settings.cs" />
+    <Compile Include="Utilities\StatusLog.cs" />
     <Compile Include="Utilities\TagInformation.cs" />
     <Compile Include="Utilities\UserInformation.cs" />
     <Compile Include="Utilities\Utilities.cs" />

@@ -66,31 +66,38 @@ namespace ComponentTests
             Func<Job, Task> jobHandlerA = async (job) =>
             {
                 log.Log("A-Start");
-                await Task.Delay(10);
+                await Task.Delay(20);
                 log.Log("A-End");
             };
 
             Func<Job, Task> jobHandlerB = async (job) =>
             {
                 log.Log("B-Start");
-                await Task.Delay(100);
+                await Task.Delay(20);
                 log.Log("B-End");
             };
 
             Func<Job, Task> jobHandlerC = async (job) =>
             {
                 log.Log("C-Start");
-                await Task.Delay(100);
+                await Task.Delay(10);
                 log.Log("C-End");
             };
 
+            // Check that an out of band job will get run even though
+            // there are other queued and running jobs
             queue.QueueJob("Job A", jobHandlerA);
             queue.QueueJob("Job B", jobHandlerB);
             queue.QueueJob("Job C", jobHandlerC, true);
+            await Task.Delay(500);
+            log.AssertEquals("{A-Start}{C-Start}{C-End}{A-End}{B-Start}{B-End}");
 
-            await Task.Delay(1000);
-
-            log.AssertEquals("{A-Start}{C-Start}{A-End}{C-End}{B-Start}{B-End}");
+            // Check that normal jobs will pass up running out of band jobs
+            queue.QueueJob("Job C", jobHandlerC, true);
+            queue.QueueJob("Job A", jobHandlerA);
+            queue.QueueJob("Job B", jobHandlerB);
+            await Task.Delay(500);
+            log.AssertEquals("{C-Start}{A-Start}{C-End}{A-End}{B-Start}{B-End}");
         }
 
         [TestMethod]
@@ -182,5 +189,29 @@ namespace ComponentTests
 
             log.AssertEquals("{1-0}{1-1}{1-2}{1-3}");
         }
+
+        [TestMethod]
+        public async Task AwaitOnJob()
+        {
+            JobQueue queue = new JobQueue();
+            CheckLog log = new CheckLog();
+
+            Func<Job, Task> jobHandler = async (job) =>
+            {
+                log.Log($"{job.DisplayName}-Start");
+                await Task.Delay(1);
+                throw new InvalidOperationException();
+            };
+
+            queue.QueueJob("0", jobHandler);
+            var repeatingJob = queue.QueueJob("1", jobHandler, false, 5, TimeSpan.Zero);
+
+            await repeatingJob.Task;
+            log.AssertEquals("{0-Start}{1-Start}{1-Start}{1-Start}{1-Start}{1-Start}");
+            var job2 = queue.QueueJob("2", jobHandler);
+            await Task.Delay(10);
+            log.AssertEquals("{2-Start}");
+        }
+
     }
 }
