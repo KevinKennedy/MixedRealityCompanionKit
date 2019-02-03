@@ -58,6 +58,11 @@ namespace HoloLensCommander
         private DeviceMonitorControl deviceMonitorControl;
 
         /// <summary>
+        /// The status log :-)
+        /// </summary>
+        private StatusLog log = new StatusLog();
+
+        /// <summary>
         /// Event that is notified when a property value has changed.
         /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
@@ -75,8 +80,7 @@ namespace HoloLensCommander
 
             this.deviceMonitor = monitor;
             this.deviceMonitor.Updated += this.DeviceMonitorUpdated;
-            this.deviceMonitor.AppInstallStatus += DeviceMonitor_AppInstallStatus;
-            this.deviceMonitor.FileUploadStatus += DeviceMonitor_FileUploadStatus;
+            this.deviceMonitor.Status += DeviceMonitorStatus;
 
             this.SetFilter();
 
@@ -107,17 +111,18 @@ namespace HoloLensCommander
         public void Dispose()
         {
             this.deviceMonitor.Updated -= this.DeviceMonitorUpdated;
-#if NO
-            this.deviceMonitor.HeartbeatLost -= Device_HeartbeatLost;
-#endif
-            this.deviceMonitor.AppInstallStatus -= DeviceMonitor_AppInstallStatus;
-            this.deviceMonitor.FileUploadStatus -= DeviceMonitor_FileUploadStatus;
+            this.deviceMonitor.Status -= DeviceMonitorStatus;
             this.deviceMonitor.Dispose();
             this.deviceMonitor = null;
 
             GC.SuppressFinalize(this);
         }
 
+        private void LogStatusMessage(string message, params object[] args)
+        {
+            this.log.Log(message, args);
+            this.StatusMessage = string.Format(message, args);
+        }
         
         /// <summary>
         /// Closes all applications running on this device.
@@ -133,7 +138,7 @@ namespace HoloLensCommander
                 }
                 catch(Exception e)
                 {
-                    this.StatusMessage = string.Format(
+                    this.LogStatusMessage(
                         "Failed to close one or more applications - {0}",
                         e.Message);
                 }
@@ -266,7 +271,7 @@ namespace HoloLensCommander
                                     await stream.FlushAsync();
                                 }
 
-                                this.StatusMessage = string.Format(
+                                this.LogStatusMessage(
                                     "{0} downloaded",
                                     fileInfo.FileName);
 
@@ -277,7 +282,7 @@ namespace HoloLensCommander
                             }
                             catch(Exception e)
                             {
-                                this.StatusMessage = string.Format(
+                                this.LogStatusMessage(
                                     "Failed to download {0} - {1}",
                                     fileInfo.FileName,
                                     e.Message);
@@ -287,7 +292,7 @@ namespace HoloLensCommander
                 }
                 catch(Exception e)
                 {
-                    this.StatusMessage = string.Format(
+                    this.LogStatusMessage(
                         "Failed to get mixed reality files - {0}",
                         e.Message);
                 }
@@ -313,7 +318,7 @@ namespace HoloLensCommander
                 }
                 catch(Exception e)
                 {
-                    this.StatusMessage = string.Format(
+                    this.LogStatusMessage(
                         "Failed to install {0} - {1}",
                         installFiles.AppPackageFile.Name,
                         e.Message);
@@ -337,11 +342,11 @@ namespace HoloLensCommander
                     {
                         await this.deviceMonitor.DeleteMixedRealityFile(fileInfo.FileName);
                     }
-                    this.StatusMessage = "Camera roll wiped successfully.";
+                    this.LogStatusMessage("Camera roll wiped successfully.");
                 }
                 catch (Exception e)
                 {
-                    this.StatusMessage = string.Format("Unable to delete all camera roll files. {0} ", e.Message);
+                    this.LogStatusMessage("Unable to delete all camera roll files. {0} ", e.Message);
                 }
             }
         }
@@ -393,7 +398,7 @@ namespace HoloLensCommander
                 }
                 catch(Exception e)
                 {
-                    this.StatusMessage = string.Format(
+                    this.LogStatusMessage(
                         "Failed to launch {0} - {1}",
                         appName,
                         e.Message);
@@ -440,7 +445,7 @@ namespace HoloLensCommander
         {
             if (this.IsConnected && this.IsSelected)
             {
-                this.StatusMessage = "Rebooting";
+                this.LogStatusMessage("Rebooting");
 
                 await this.deviceMonitor.RebootAsync();
 
@@ -472,7 +477,7 @@ namespace HoloLensCommander
                 }
                 catch (Exception e)
                 {
-                    this.StatusMessage = string.Format(
+                    this.LogStatusMessage(
                         "Unable to update the IPD - {0}",
                         e.Message);
                 }
@@ -541,8 +546,8 @@ namespace HoloLensCommander
                     {
                         message += " " + dpe.Reason;
                     }
-                    
-                    this.StatusMessage = string.Format(
+
+                    this.LogStatusMessage(
                         "Unable to set kiosk mode - {0}",
                         message);
                 }
@@ -559,7 +564,7 @@ namespace HoloLensCommander
                 }
                 catch (Exception e)
                 {
-                    this.StatusMessage = string.Format(
+                    this.LogStatusMessage(
                         "Unable to apply sleep settings to {0} - {1}",
                         this.deviceMonitor.Name,
                         e.Message);
@@ -632,7 +637,7 @@ namespace HoloLensCommander
         {
             if (this.IsConnected && this.IsSelected)
             {
-                this.StatusMessage = "Shutting down";
+                this.LogStatusMessage("Shutting down");
 
                 await this.deviceMonitor.ShutdownAsync();
 
@@ -648,7 +653,7 @@ namespace HoloLensCommander
         {
             if (this.IsConnected && this.IsSelected)
             {
-                this.StatusMessage = "Starting mixed reality recording";
+                this.LogStatusMessage("Starting mixed reality recording");
 
                 await this.deviceMonitor.StartMixedRealityRecordingAsync();
             }
@@ -664,7 +669,7 @@ namespace HoloLensCommander
             {
                 await this.deviceMonitor.StopMixedRealityRecordingAsync();
 
-                this.StatusMessage = "Mixed reality recording stopped";
+                this.LogStatusMessage("Mixed reality recording stopped");
             }
         }
 
@@ -726,13 +731,13 @@ namespace HoloLensCommander
 
                     await this.deviceMonitor.UninstallApplicationAsync(packageName);
 
-                    this.StatusMessage = "Uninstall complete";
+                    this.LogStatusMessage("Uninstall complete");
 
                     this.deviceMonitorControl.NotifyAppUninstall();
                 }
                 catch (Exception e)
                 {
-                    this.StatusMessage = string.Format(
+                    this.LogStatusMessage(
                         "Failed to uninstall {0} - {1}",
                         appName,
                         e.Message);
@@ -758,39 +763,27 @@ namespace HoloLensCommander
                             await this.deviceMonitor.UninstallApplicationAsync(packageInfo.FullName);
                         }
                     }
-                    this.StatusMessage = "Successfully uninstalled all apps.";
+                    this.LogStatusMessage("Successfully uninstalled all apps.");
 
                     this.deviceMonitorControl.NotifyAppUninstall();
                 }
                 catch (Exception e)
                 {
-                    this.StatusMessage = string.Format("Failed to uninstall all apps. {0} ", e.Message);
+                    this.LogStatusMessage("Failed to uninstall all apps. {0} ", e.Message);
                 }
             }
         }
 
         /// <summary>
-        /// Handles the ApplicationInstallStatus event.
+        /// Handles the DeviceMonitor Status event.
         /// </summary>
         /// <param name="sender">The object which sent this event.</param>
-        /// <param name="args">Event arguments.</param>
-        private void DeviceMonitor_AppInstallStatus(
-            DeviceMonitor sender, 
-            ApplicationInstallStatusEventArgs args)
-        {
-            this.StatusMessage = args.Message;
-        }
-
-        /// <summary>
-        /// Handles the FileUploadStatus event.
-        /// </summary>
-        /// <param name="sender">The object which sent this event.</param>
-        /// <param name="args">Event arguments.</param>
-        private void DeviceMonitor_FileUploadStatus(
+        /// <param name="message">Status Message</param>
+        private void DeviceMonitorStatus(
             DeviceMonitor sender,
             string message)
         {
-            this.StatusMessage = message;
+            this.LogStatusMessage(message);
         }
 
         /// <summary>
@@ -845,7 +838,7 @@ namespace HoloLensCommander
             {
                 // We are not connected
 
-                this.StatusMessage = HeartbeatLostMessage;
+                this.LogStatusMessage(HeartbeatLostMessage);
 
                 // Update the heartbeat based UI
                 this.PowerIndicator = OnBatteryLabel;
@@ -876,7 +869,7 @@ namespace HoloLensCommander
                 return;
             }
 
-            this.StatusMessage = message;
+            this.LogStatusMessage(message);
         }
 
         /// <summary>
@@ -916,7 +909,7 @@ namespace HoloLensCommander
                     }
                     catch(Exception e)
                     {
-                        this.StatusMessage = string.Format(
+                        this.LogStatusMessage(
                             "Failed to set IPD ({0})",
                             e.Message);
                     }
@@ -931,7 +924,7 @@ namespace HoloLensCommander
                     }
                     catch(Exception e)
                     {
-                        this.StatusMessage = string.Format(
+                        this.LogStatusMessage(
                             "Failed to set kiosk mode ({0})",
                             e.Message);
                     }
@@ -946,7 +939,7 @@ namespace HoloLensCommander
                     }
                     catch (Exception e)
                     {
-                        this.StatusMessage = string.Format(
+                        this.LogStatusMessage(
                             "Failed to set the device name ({0})",
                             e.Message);
                     }

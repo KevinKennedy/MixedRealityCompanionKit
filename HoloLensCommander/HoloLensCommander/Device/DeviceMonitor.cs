@@ -23,11 +23,11 @@ namespace HoloLensCommander
         ApplicationInstallStatusEventArgs args);
 
     /// <summary>
-    /// File upload status event handler
+    /// General status updates from the DeviceMonitor
     /// </summary>
     /// <param name="sender">The DeviceMonitor sending the event.</param>
     /// <param name="message">The status</param>
-    public delegate void DeviceMonitorFileUploadStatusEventHandler(
+    public delegate void DeviceMonitorStatusEventHandler(
         DeviceMonitor sender,
         string message);
 
@@ -108,7 +108,7 @@ namespace HoloLensCommander
         /// <summary>
         /// Event that is sent when file upload status changed
         /// </summary>
-        public event DeviceMonitorFileUploadStatusEventHandler FileUploadStatus;
+        public event DeviceMonitorStatusEventHandler Status;
 
         /// <summary>
         /// Event that is sent when the heartbeat has been received.
@@ -132,9 +132,15 @@ namespace HoloLensCommander
 
             this.dispatcher = dispatcher;
             this.jobQueue = new JobQueue();
+            this.jobQueue.JobStatusChanged += JobQueueJobStatusChanged;
             this.connectOptions = connectOptions;
 
             this.jobQueue.QueueJob(heartbeatJobName, HeartbeatJobHandler, true, 1, TimeSpan.FromSeconds(5.0));
+        }
+
+        private void JobQueueJobStatusChanged(Job job, JobStatus previousStatus, JobStatus newStatus, string statusMessage)
+        {
+            this.StatusMessage($"Job: {job} - {previousStatus.ToString()}->{newStatus.ToString()} - {statusMessage}");
         }
 
         private async Task HeartbeatJobHandler(Job job)
@@ -143,9 +149,9 @@ namespace HoloLensCommander
 
             await this.EnsureConnectionAsync(cancellationToken);
 
-            await this.UpdateMachineName();
+            this.MachineName = await this.devicePortal.GetDeviceNameAsync();
             cancellationToken.ThrowIfCancellationRequested();
-            await this.UpdateBatteryStatus();
+            this.BatteryState = await this.devicePortal.GetBatteryStateAsync();
             cancellationToken.ThrowIfCancellationRequested();
             await this.UpdateIpd();
             cancellationToken.ThrowIfCancellationRequested();
@@ -321,15 +327,6 @@ namespace HoloLensCommander
             }
         }
 
-            /// <summary>
-            /// Updates the cached battery data.
-            /// </summary>
-            /// <returns>Task object used for tracking method completion.</returns>
-            private async Task UpdateBatteryStatus()
-            {
-                this.BatteryState = await this.devicePortal.GetBatteryStateAsync();
-            }
-
         /// <summary>
         /// Updates the cached interpupilary distance data.
         /// </summary>
@@ -384,7 +381,7 @@ namespace HoloLensCommander
                     message = dpe.Reason + " - " + e.Message;
                 }
 
-                Debug.WriteLine("UpdateRunningProcessList: Failed:" + message);
+                this.StatusMessage("UpdateRunningProcessList: Failed:" + message);
             }
         }
 
@@ -403,6 +400,11 @@ namespace HoloLensCommander
             {
                 // Not supported on this type of device.
             }
+        }
+
+        private void StatusMessage(string message, params object[] parameters)
+        {
+            this.Status?.Invoke(this, string.Format(message, parameters));
         }
     }
 }

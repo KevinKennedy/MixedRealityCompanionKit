@@ -66,14 +66,14 @@ namespace ComponentTests
             Func<Job, Task> jobHandlerA = async (job) =>
             {
                 log.Log("A-Start");
-                await Task.Delay(20);
+                await Task.Delay(40);
                 log.Log("A-End");
             };
 
             Func<Job, Task> jobHandlerB = async (job) =>
             {
                 log.Log("B-Start");
-                await Task.Delay(20);
+                await Task.Delay(40);
                 log.Log("B-End");
             };
 

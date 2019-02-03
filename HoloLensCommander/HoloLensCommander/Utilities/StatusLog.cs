@@ -22,10 +22,18 @@ namespace HoloLensCommander
             this.dispatcher = CoreWindow.GetForCurrentThread().Dispatcher;
         }
 
+        public void Clear()
+        {
+            lock(defaultLock)
+            {
+                this.stringList.Clear();
+            }
+        }
+
         public void Log(string format, params object[] args)
         {
             string message = string.Format(format, args);
-            lock (this.stringList)
+            lock (defaultLock)
             {
                 this.stringList.Add(message);
             }
@@ -52,7 +60,7 @@ namespace HoloLensCommander
         public string[] GetLogAsArray()
         {
             string[] retval;
-            lock (this.stringList)
+            lock (defaultLock)
             {
                 retval = this.stringList.ToArray();
             }
@@ -63,7 +71,7 @@ namespace HoloLensCommander
         {
             var sb = new StringBuilder();
 
-            lock (this.stringList)
+            lock (defaultLock)
             {
                 foreach (var s in this.stringList)
                 {

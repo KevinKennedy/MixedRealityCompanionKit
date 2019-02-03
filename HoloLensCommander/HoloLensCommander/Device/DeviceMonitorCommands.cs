@@ -102,8 +102,6 @@ namespace HoloLensCommander
         /// <returns>The device's name.</returns>
         private async Task UpdateMachineName()
         {
-            this.MachineName = await QueuedJobHelper("UpdateMachineName",
-                () => this.devicePortal.GetDeviceNameAsync());
         }
 
         /// <summary>
@@ -301,6 +299,9 @@ namespace HoloLensCommander
 
         private void NotifyUploadStatus(string status)
         {
+            // Remove the RunAsync stuff below if this assert doesn't fire
+            Debug.Assert(this.dispatcher.HasThreadAccess);
+
             if (!this.dispatcher.HasThreadAccess)
             {
                 // Assigning the return value of RunAsync to a Task object to avoid 
@@ -314,8 +315,7 @@ namespace HoloLensCommander
                 return;
             }
 
-            Debug.WriteLine($"NotifyUploadStatus: {status}");
-            this.FileUploadStatus?.Invoke(this, status);
+            this.Status?.Invoke(this, status);
         }
 
         /// <summary>
@@ -458,6 +458,9 @@ namespace HoloLensCommander
         private void NotifyAppInstallStatus(
             ApplicationInstallStatusEventArgs args)
         {
+            // remove the RunAsync stuff if this assert doesn't fire
+            Debug.Assert(this.dispatcher.HasThreadAccess);
+
             if (!this.dispatcher.HasThreadAccess)
             {
                 // Assigning the return value of RunAsync to a Task object to avoid 
@@ -474,6 +477,7 @@ namespace HoloLensCommander
             this.AppInstallStatus?.Invoke(
                 this, 
                 args);
+            this.Status?.Invoke(this, args.Message);
         }
     }
 }

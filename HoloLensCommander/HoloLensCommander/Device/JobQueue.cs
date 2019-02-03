@@ -79,7 +79,7 @@ namespace HoloLensCommander.Device
         Failed,
     };
 
-    public delegate void JobStatusChanged(Job job, JobStatus previousStatus, JobStatus newStatus);
+    public delegate void JobStatusChanged(Job job, JobStatus previousStatus, JobStatus newStatus, string statusMessage);
 
     /// <summary>
     /// Class represeting a job in the JobQueue
@@ -185,14 +185,9 @@ namespace HoloLensCommander.Device
             {
                 newStatus = JobStatus.Canceled;
             }
-            else if(this.RepeatDelay != TimeSpan.Zero)
-            {
-                // This is a repeating job so just keep it in the queue
-                newStatus = JobStatus.Queued;
-            }
             else if(this.task.IsFaulted)
             {
-                if(this.RetrysLeft > 0)
+                if(this.RetrysLeft > 0 || this.RepeatDelay != TimeSpan.Zero)
                 {
                     // Try again
                     newStatus = JobStatus.Queued;
@@ -200,10 +195,16 @@ namespace HoloLensCommander.Device
                 else
                 {
                     newStatus = JobStatus.Failed;
-                    newDisplayStatus = $"Failed - Exception: {this.task.Exception?.InnerException?.Message}";
                 }
+
+                newDisplayStatus = $"Failed {(newStatus == JobStatus.Queued ? "- Retrying" : "")} - Exception: {this.task.Exception?.InnerException?.Message}";
             }
-            else if(this.task.Status == TaskStatus.RanToCompletion)
+            else if (this.RepeatDelay != TimeSpan.Zero)
+            {
+                // This is a repeating job so just keep it in the queue
+                newStatus = JobStatus.Queued;
+            }
+            else if (this.task.Status == TaskStatus.RanToCompletion)
             {
                 newStatus = JobStatus.Succeeded;
             }
@@ -234,13 +235,13 @@ namespace HoloLensCommander.Device
             }
         }
 
-        private void ChangeStatus(JobStatus newStatus, string newDisplayStatus = null)
+        private void ChangeStatus(JobStatus newStatus, string statusMessage = null)
         {
             JobStatus previousStatus = this.Status;
             this.Status = newStatus;
-            this.DisplayStatus = (newDisplayStatus != null) ? newDisplayStatus : newStatus.ToString();
+            this.DisplayStatus = (statusMessage != null) ? statusMessage : newStatus.ToString();
 
-            this.StatusChanged?.Invoke(this, previousStatus, newStatus);
+            this.StatusChanged?.Invoke(this, previousStatus, newStatus, statusMessage);
         }
 
         public override string ToString()
@@ -259,6 +260,8 @@ namespace HoloLensCommander.Device
     {
         private List<Job> jobs = new List<Job>(4);
 
+        public event JobStatusChanged JobStatusChanged;
+
         public Job QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand = false, int retryCount = 1)
         {
             return this.QueueJob(displayName, handler, outOfBand, retryCount, TimeSpan.Zero);
@@ -267,7 +270,7 @@ namespace HoloLensCommander.Device
         public Job QueueJob(string displayName, Func<Job, Task> handler, bool outOfBand, int retryCount, TimeSpan repeatDelay)
         {
             var job = new Job(displayName, handler, outOfBand, retryCount, repeatDelay);
-            job.StatusChanged += JobStatusChanged;
+            job.StatusChanged += QueuedJobStatusChanged;
             this.jobs.Insert(0, job);
             job.OnJobQueued();
             this.ProcessQueue();
@@ -275,9 +278,15 @@ namespace HoloLensCommander.Device
             return job;
         }
 
-        private void JobStatusChanged(Job job, JobStatus previousStatus, JobStatus newStatus)
+        private void QueuedJobStatusChanged(Job job, JobStatus previousStatus, JobStatus newStatus, string statusMessage)
         {
+            // Whenever something changes in the jobs list, re-process the call.
+            // Calls to ProcessQueue should be idempotent.
+            // We could be more strategis about this or just call it on a timer
+            // or let the owner decide when this gets called.
             this.ProcessQueue();
+
+            this.JobStatusChanged?.Invoke(job, previousStatus, newStatus, statusMessage);
         }
 
         public Job[] GetJobs()
@@ -315,7 +324,7 @@ namespace HoloLensCommander.Device
                 if(job.Completed)
                 {
                     this.jobs.RemoveAt(index);
-                    job.StatusChanged -= this.JobStatusChanged;
+                    job.StatusChanged -= this.QueuedJobStatusChanged;
                     continue;
                 }
 

@@ -40,6 +40,7 @@ namespace HoloLensCommander
         /// </summary>
         internal void ClearStatusMessage()
         {
+            this.log.Clear();
             this.StatusMessage = string.Empty;
         }
 
@@ -148,7 +149,7 @@ namespace HoloLensCommander
                     }
                     catch (Exception e)
                     {
-                        this.StatusMessage = string.Format(
+                        this.LogStatusMessage(
                             "Failed to display device information ({0})",
                             e.Message);
                     }
@@ -161,7 +162,7 @@ namespace HoloLensCommander
                     }
                     catch (Exception e)
                     {
-                        this.StatusMessage = string.Format(
+                        this.LogStatusMessage(
                             "Failed to manage applications ({0})",
                             e.Message);
                     }
@@ -174,7 +175,7 @@ namespace HoloLensCommander
                     }
                     catch (Exception e)
                     {
-                        this.StatusMessage = string.Format(
+                        this.LogStatusMessage(
                             "Failed to display Mixed Reality view ({0})",
                             e.Message);
                     }
@@ -187,7 +188,7 @@ namespace HoloLensCommander
                     }
                     catch (Exception e)
                     {
-                        this.StatusMessage = string.Format(
+                        this.LogStatusMessage(
                             "Failed to launch the Windows Device Portal ({0})",
                             e.Message);
                     }
