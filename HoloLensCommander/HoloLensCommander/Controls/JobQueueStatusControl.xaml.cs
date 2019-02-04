@@ -73,7 +73,8 @@ namespace HoloLensCommander.Controls
                 }
             }
 
-            int newRowCount = outOfBandJobCount + regularJobCount;
+            int newRowCount = (outOfBandJobCount > 0 ? outOfBandJobCount : 1) +
+                    (regularJobCount > 0 ? regularJobCount : 1);
 
             this.MainGrid.Children.Clear();
             this.MainGrid.RowDefinitions.Clear();
@@ -101,7 +102,7 @@ namespace HoloLensCommander.Controls
                 }
             }
 
-            // Add the regular jobs
+            // Add the regular jobs to the last row
             Grid regularJobsRowGrid = new Grid();
             Grid.SetRow(regularJobsRowGrid, currentRowIndex);
             this.MainGrid.Children.Add(regularJobsRowGrid);
@@ -111,7 +112,7 @@ namespace HoloLensCommander.Controls
             {
                 if (!job.OutOfBand)
                 {
-                    regularJobsRowGrid.Children.Add(this.CreateJobVisual(currentRowIndex, currentJobColumnIndex, job));
+                    regularJobsRowGrid.Children.Add(this.CreateJobVisual(newRowCount - 1, currentJobColumnIndex, job));
 
                     currentRowIndex++;
                     currentJobColumnIndex--;
