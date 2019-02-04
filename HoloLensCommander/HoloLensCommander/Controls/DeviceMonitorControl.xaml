@@ -1,10 +1,11 @@
 ﻿<Page
-    x:Class="HoloLensCommander.DeviceMonitorControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:HoloLensCommander"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:Custom="using:HoloLensCommander.Controls"
+    x:Class="HoloLensCommander.DeviceMonitorControl"
     mc:Ignorable="d"
     Height="40"
     d:DesignWidth="930">
@@ -16,13 +17,12 @@
         IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
         Margin="10,0,10,0"
         MinWidth="0"
-        VerticalAlignment="Center">
-    </CheckBox>
+        VerticalAlignment="Center"/>
     <Button 
         x:Name="showContextMenu" 
         Content="..." 
-        Command="{Binding Path=ShowContextMenuCommand}"
-        CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+        Command="{Binding ShowContextMenuCommand}"
+        CommandParameter="{Binding RelativeSource={RelativeSource Mode=Self}}"
         ToolTipService.ToolTip="Display additional options"
         VerticalContentAlignment="Center"
         HorizontalContentAlignment="Center"
@@ -31,7 +31,7 @@
         />
     <TextBlock 
         x:Name="deviceTypeLabel" 
-        Text="{Binding Path=DeviceTypeLabel, FallbackValue=}" 
+        Text="{Binding DeviceTypeLabel, FallbackValue=&#xE7F4;}" 
         FontFamily="Segoe MDL2 Assets"
         VerticalAlignment="Center" 
         Margin="5,0,5,0"
@@ -55,7 +55,7 @@
           />
       <TextBlock 
           Grid.Column="1" Grid.Row="0"
-          Text="{Binding Path=Address,FallbackValue=xxx.xxx.xxx.xxx}" 
+          Text="{Binding Address, FallbackValue=xxx.xxx.xxx.xxx}" 
           />
       <TextBlock
           Grid.Column="0" Grid.Row="1"
@@ -65,12 +65,12 @@
           />
       <TextBlock 
           Grid.Column="1" Grid.Row="1"
-          Text="{Binding Path=Name,FallbackValue=machineName}" />
+          Text="{Binding Name, FallbackValue=machineName}" />
       <Button 
           Grid.Column="2" Grid.Row="1"
           x:Name="setTagButton" 
           Content="&#xEB7E;" 
-          Command="{Binding Path=SetTagCommand}"
+          Command="{Binding SetTagCommand}"
           FontFamily="Segoe MDL2 Assets" FontSize="9"
           Padding="4,1,4,1"
           />
@@ -87,7 +87,7 @@
       </Grid.ColumnDefinitions>
       <TextBlock
           Grid.Column="0" Grid.Row="0"
-          Text="{Binding Path=PowerIndicator,FallbackValue=}"
+          Text="{Binding PowerIndicator, FallbackValue=&#xEBB2;}"
           ToolTipService.ToolTip="Indicates if the device is on AC or battery power"
           FontFamily="Segoe MDL2 Assets"
           HorizontalAlignment="Center"
@@ -96,28 +96,28 @@
       <TextBlock
           Grid.Column="1" Grid.Row="0"
           x:Name="batteryLevel"
-          Text="{Binding BatteryLevel,FallbackValue=100.0%}"
+          Text="{Binding BatteryLevel, FallbackValue=100.0%}"
           ToolTipService.ToolTip="The percent of remaining battery life"
           Margin="5,0,5,0"
           />
       <TextBlock
           Grid.Column="0" Grid.Row="1"
           Text="IPD:" 
-          Visibility="{Binding Path=IpdVisibility}"
+          Visibility="{Binding IpdVisibility}"
           HorizontalAlignment="Right"
           />
       <TextBlock
           Grid.Column="1" Grid.Row="1"
-          Text="{Binding Path=Ipd,FallbackValue=99}"
+          Text="{Binding Ipd, FallbackValue=99}"
           ToolTipService.ToolTip="Interpupilary distance"
-          Visibility="{Binding Path=IpdVisibility}"
+          Visibility="{Binding IpdVisibility}"
           Margin="5,0,5,0"
           />
       <Button
           Grid.Column="2" Grid.Row="1"
           Content="&#xEB7E;" 
-          Command="{Binding Path=SetIpdCommand}"
-          Visibility="{Binding Path=IpdVisibility}"
+          Command="{Binding SetIpdCommand}"
+          Visibility="{Binding IpdVisibility}"
           FontFamily="Segoe MDL2 Assets" FontSize="9"
           Padding="4,1,4,1"
           />
@@ -126,14 +126,14 @@
           x:Name="thermalLabel" 
           Text="á" 
           FontFamily="WebDings" FontSize="20"
-          Visibility="{Binding Path=ThermalStatus}"
+          Visibility="{Binding ThermalStatus}"
           />
     </Grid>
     <ScrollViewer Margin="10,0,0,0" Width="262">
       <TextBlock 
           x:Name="status" 
-          Text="{Binding Path=StatusMessage, FallbackValue=StatusMessage}"
-          ToolTipService.ToolTip="{Binding Path=StatusLogTail,FallbackValue=LongStatus}"
+          Text="{Binding StatusMessage, FallbackValue=StatusMessage}"
+          ToolTipService.ToolTip="{Binding StatusLogTail, FallbackValue=LongStatus}"
           TextWrapping="Wrap" FontSize="16"
           HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
     </ScrollViewer>
@@ -141,7 +141,7 @@
       <Button 
           Content="&#xE8C8;"
           ToolTipService.ToolTip="Copy status log to clipboard"
-          Command="{Binding Path=CopyStatusLogCommand}"
+          Command="{Binding CopyStatusLogCommand}"
           FontFamily="Segoe MDL2 Assets" FontSize="8"
           Padding="2,2,2,2"
           Margin="0,2,0,2"
@@ -149,16 +149,16 @@
       <Button 
           Content="&#xE947;"
           ToolTipService.ToolTip="Clear status"
-          Command="{Binding Path=ClearStatusMessageCommand}"
+          Command="{Binding ClearStatusMessageCommand}"
           FontFamily="Segoe MDL2 Assets" FontSize="8"
           Margin="0,2,0,2"
           Padding="2,2,2,2"
-        />      
+        />
     </StackPanel>
 
     <Grid
         Margin="5,3,0,0"
-        Visibility="{Binding Path=KioskModeVisiblity,FallbackValue=Visibility.Visible}">
+        Visibility="{Binding KioskModeVisiblity, FallbackValue=Visibility.Visible}">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="30"/>
         <ColumnDefinition Width="*"/>
@@ -166,17 +166,20 @@
       <TextBlock
           Grid.Column="0"
           ToolTipService.ToolTip="Is Kiosk Mode Enabled?"
-          Text="{Binding Path=KioskModeState,FallbackValue=Yes}"
+          Text="{Binding KioskModeState, FallbackValue=Yes}"
           />
       <Button 
           Grid.Column="1"
           Content="&#xEB7E;" 
           FontFamily="Segoe MDL2 Assets" FontSize="10"
           ToolTipService.ToolTip="Setup Kiosk Mode..."
-          Command="{Binding Path=SetKioskModeCommand}"
+          Command="{Binding SetKioskModeCommand}"
           Height="22" Width="32"
           VerticalAlignment="Top"
           />
     </Grid>
+
+    <Custom:JobQueueStatusControl Width="140" JobQueue="{Binding Path=MonitorJobQueue}"/>
+
   </StackPanel>
 </Page>

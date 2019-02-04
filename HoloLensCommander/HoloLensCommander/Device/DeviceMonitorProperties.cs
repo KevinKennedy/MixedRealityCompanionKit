@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
+using HoloLensCommander.Device;
 using Microsoft.Tools.WindowsDevicePortal;
 using static Microsoft.Tools.WindowsDevicePortal.DevicePortal;
 
@@ -131,6 +132,8 @@ namespace HoloLensCommander
         /// Returns the most recently cached thermal stage.
         /// </summary>
         public ThermalStages ThermalStage { get; private set; }
+
+        public JobQueue JobQueue { get { return this.jobQueue; } }
 
     }
 }
