@@ -82,8 +82,12 @@ namespace HoloLensCommander
         /// <summary>
         /// Command used to display the set tag dialog.
         /// </summary>
-        public ICommand SetTagCommand
-        { get; private set; }
+        public ICommand SetTagCommand { get; private set; }
+
+        /// <summary>
+        /// Put the contents of the status log into the clipboard
+        /// </summary>
+        public ICommand CopyStatusLogCommand { get; private set; }
 
         /// <summary>
         /// Command used to display the context menu.

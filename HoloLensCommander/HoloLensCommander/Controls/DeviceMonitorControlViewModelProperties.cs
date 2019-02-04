@@ -278,7 +278,16 @@ namespace HoloLensCommander
                 {
                     this.statusMessage = value;
                     this.NotifyPropertyChanged("StatusMessage");
+                    this.NotifyPropertyChanged("StatusLogTail");
                 }
+            }
+        }
+
+        public string StatusLogTail
+        {
+            get
+            {
+                return this.log.GetTail(10);
             }
         }
 

@@ -78,11 +78,21 @@ namespace HoloLensCommander
                     sb.Append(s);
                     sb.Append("\r\n");
                 }
+            }
 
-                // Remove the trailing /r/n
-                if (this.stringList.Count > 0)
+            return sb.ToString();
+        }
+
+        public string GetTail(int entryCount)
+        {
+            var sb = new StringBuilder();
+
+            lock (defaultLock)
+            {
+                for(int index = Math.Max(0, this.stringList.Count - entryCount); index < this.stringList.Count; index++)
                 {
-                    sb.Remove(sb.Length - 1, 2);
+                    sb.Append(this.stringList[index]);
+                    sb.Append("\r\n");
                 }
             }
 

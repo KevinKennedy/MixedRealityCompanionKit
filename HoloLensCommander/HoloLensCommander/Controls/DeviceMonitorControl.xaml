@@ -35,6 +35,7 @@
         FontFamily="Segoe MDL2 Assets"
         VerticalAlignment="Center" 
         Margin="5,0,5,0"
+        Width="17"
         />
     <Grid Margin="5,0,0,0">
       <Grid.RowDefinitions>
@@ -132,24 +133,41 @@
       <TextBlock 
           x:Name="status" 
           Text="{Binding Path=StatusMessage, FallbackValue=StatusMessage}"
+          ToolTipService.ToolTip="{Binding Path=StatusLogTail,FallbackValue=LongStatus}"
           TextWrapping="Wrap" FontSize="16"
           HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
     </ScrollViewer>
-    <Button 
-        Content="&#xE947;"
-        ToolTipService.ToolTip="Clear status"
-        Command="{Binding Path=ClearStatusMessageCommand}"
-        FontFamily="Segoe MDL2 Assets" FontSize="8"
-        Padding="2,2,2,2"
-        VerticalAlignment="Bottom"
-      />
+    <StackPanel Orientation="Vertical">
+      <Button 
+          Content="&#xE8C8;"
+          ToolTipService.ToolTip="Copy status log to clipboard"
+          Command="{Binding Path=CopyStatusLogCommand}"
+          FontFamily="Segoe MDL2 Assets" FontSize="8"
+          Padding="2,2,2,2"
+          Margin="0,2,0,2"
+        />
+      <Button 
+          Content="&#xE947;"
+          ToolTipService.ToolTip="Clear status"
+          Command="{Binding Path=ClearStatusMessageCommand}"
+          FontFamily="Segoe MDL2 Assets" FontSize="8"
+          Margin="0,2,0,2"
+          Padding="2,2,2,2"
+        />      
+    </StackPanel>
+
     <Grid
+        Margin="5,3,0,0"
         Visibility="{Binding Path=KioskModeVisiblity,FallbackValue=Visibility.Visible}">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="30"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
-      <TextBlock Grid.Column="0" Margin="10,0,5,0" Text="{Binding Path=KioskModeState,FallbackValue=??}" />
+      <TextBlock
+          Grid.Column="0"
+          ToolTipService.ToolTip="Is Kiosk Mode Enabled?"
+          Text="{Binding Path=KioskModeState,FallbackValue=Yes}"
+          />
       <Button 
           Grid.Column="1"
           Content="&#xEB7E;" 

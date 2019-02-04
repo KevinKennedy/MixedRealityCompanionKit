@@ -15,6 +15,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Microsoft.Tools.WindowsDevicePortal;
 using static Microsoft.Tools.WindowsDevicePortal.DevicePortal;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace HoloLensCommander
 {
@@ -943,6 +944,14 @@ namespace HoloLensCommander
                             "Failed to set the device name ({0})",
                             e.Message);
                     }
+                });
+
+            this.CopyStatusLogCommand = new Command(
+                (parameter) =>
+                {
+                    var dataPackage = new DataPackage();
+                    dataPackage.SetText(this.log.GetLogAsString());
+                    Clipboard.SetContent(dataPackage);
                 });
 
             this.ShowContextMenuCommand = new Command(
