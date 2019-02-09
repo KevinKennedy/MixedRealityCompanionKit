@@ -22,6 +22,20 @@ namespace HoloLensCommander
         DeviceMonitor sender, 
         ApplicationInstallStatusEventArgs args);
 
+    public class DeviceMonitorStatusEventArgs : EventArgs
+    {
+        public JobStatus JobStatus { get; private set; }
+        public string Message { get; private set; }
+        public string JobName { get; private set; }
+
+        public DeviceMonitorStatusEventArgs(string message, Job job, JobStatus newStatus)
+        {
+            this.Message = message == null ? string.Empty : message;
+            this.JobName = job == null ? string.Empty : job.DisplayName;
+            this.JobStatus = newStatus;
+        }
+    }
+
     /// <summary>
     /// General status updates from the DeviceMonitor
     /// </summary>
@@ -29,7 +43,7 @@ namespace HoloLensCommander
     /// <param name="message">The status</param>
     public delegate void DeviceMonitorStatusEventHandler(
         DeviceMonitor sender,
-        string message);
+        DeviceMonitorStatusEventArgs args);
 
     /// <summary>
     /// Delegate defining the method signature for handling the DeviceMonitorUpdated event.
@@ -140,7 +154,7 @@ namespace HoloLensCommander
 
         private void JobQueueJobStatusChanged(Job job, JobStatus previousStatus, JobStatus newStatus, string statusMessage)
         {
-            this.StatusMessage($"Job: {job} - {previousStatus.ToString()}->{newStatus.ToString()} - {statusMessage}");
+            this.Status?.Invoke(this, new DeviceMonitorStatusEventArgs(statusMessage, job, newStatus));
         }
 
         private async Task HeartbeatJobHandler(Job job)
@@ -404,7 +418,7 @@ namespace HoloLensCommander
 
         private void StatusMessage(string message, params object[] parameters)
         {
-            this.Status?.Invoke(this, string.Format(message, parameters));
+            this.Status?.Invoke(this, new DeviceMonitorStatusEventArgs(string.Format(message, parameters), null, JobStatus.None));
         }
     }
 }

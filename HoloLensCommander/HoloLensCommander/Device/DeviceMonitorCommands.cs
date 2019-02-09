@@ -97,14 +97,6 @@ namespace HoloLensCommander
         }
 
         /// <summary>
-        /// Gets the name of the device.
-        /// </summary>
-        /// <returns>The device's name.</returns>
-        private async Task UpdateMachineName()
-        {
-        }
-
-        /// <summary>
         /// Downloads a mixed reality file.
         /// </summary>
         /// <param name="fileName">The name of the file to download</param>
@@ -315,7 +307,7 @@ namespace HoloLensCommander
                 return;
             }
 
-            this.Status?.Invoke(this, status);
+            this.Status?.Invoke(this, new DeviceMonitorStatusEventArgs(status, null, Device.JobStatus.None));
         }
 
         /// <summary>
@@ -477,7 +469,7 @@ namespace HoloLensCommander
             this.AppInstallStatus?.Invoke(
                 this, 
                 args);
-            this.Status?.Invoke(this, args.Message);
+            this.Status?.Invoke(this, new DeviceMonitorStatusEventArgs(args.Message, null, Device.JobStatus.None));
         }
     }
 }

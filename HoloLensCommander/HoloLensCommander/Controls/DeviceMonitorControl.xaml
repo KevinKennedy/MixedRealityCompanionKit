@@ -81,9 +81,9 @@
         <RowDefinition Height="*"/>
       </Grid.RowDefinitions>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="26"/>
         <ColumnDefinition Width="65"/>
-        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="23"/>
       </Grid.ColumnDefinitions>
       <TextBlock
           Grid.Column="0" Grid.Row="0"
@@ -134,7 +134,7 @@
           x:Name="status" 
           Text="{Binding StatusMessage, FallbackValue=StatusMessage}"
           ToolTipService.ToolTip="{Binding StatusLogTail, FallbackValue=LongStatus}"
-          TextWrapping="Wrap" FontSize="16"
+          TextWrapping="Wrap" FontSize="15"
           HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
     </ScrollViewer>
     <StackPanel Orientation="Vertical">

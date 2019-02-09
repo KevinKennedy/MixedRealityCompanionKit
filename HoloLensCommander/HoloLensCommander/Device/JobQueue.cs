@@ -197,7 +197,9 @@ namespace HoloLensCommander.Device
                     newStatus = JobStatus.Failed;
                 }
 
-                newDisplayStatus = $"Failed {(newStatus == JobStatus.Queued ? "- Retrying" : "")} - Exception: {this.task.Exception?.InnerException?.Message}";
+                // Temporary status change.  It will go to the newStatus below.
+                string failedStatus = $"Failed {(newStatus == JobStatus.Queued ? "- Retrying" : "")} - Exception: {this.task.Exception?.InnerException?.Message}";
+                this.StatusChanged?.Invoke(this, this.Status, JobStatus.Failed, failedStatus);
             }
             else if (this.RepeatDelay != TimeSpan.Zero)
             {
@@ -235,13 +237,16 @@ namespace HoloLensCommander.Device
             }
         }
 
-        private void ChangeStatus(JobStatus newStatus, string statusMessage = null)
+        private void ChangeStatus(JobStatus newStatus, string statusMessage = null, bool reportStatus = true)
         {
             JobStatus previousStatus = this.Status;
             this.Status = newStatus;
             this.DisplayStatus = (statusMessage != null) ? statusMessage : newStatus.ToString();
 
-            this.StatusChanged?.Invoke(this, previousStatus, newStatus, statusMessage);
+            if (reportStatus)
+            {
+                this.StatusChanged?.Invoke(this, previousStatus, newStatus, statusMessage);
+            }
         }
 
         public override string ToString()

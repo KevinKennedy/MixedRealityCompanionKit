@@ -212,11 +212,14 @@ namespace HoloLensCommander
                 {
                     AppPackages installedApps = await this.deviceMonitor.GetInstalledApplicationsAsync();
 
-                    foreach(PackageInfo app in installedApps.Packages)
+                    if (installedApps != null)
                     {
-                        if(app.IsSideloaded())
+                        foreach (PackageInfo app in installedApps.Packages)
                         {
-                            appFullNames.Add(app.FullName);
+                            if (app.IsSideloaded())
+                            {
+                                appFullNames.Add(app.FullName);
+                            }
                         }
                     }
                 }
@@ -781,9 +784,24 @@ namespace HoloLensCommander
         /// <param name="sender">The object which sent this event.</param>
         /// <param name="message">Status Message</param>
         private void DeviceMonitorStatus(
-            DeviceMonitor sender,
-            string message)
+            DeviceMonitor sender, DeviceMonitorStatusEventArgs args)
         {
+
+            if(args.JobName == "heartbeat" &&
+                (args.JobStatus == Device.JobStatus.Running || args.JobStatus == Device.JobStatus.Succeeded || args.JobStatus == Device.JobStatus.Queued))
+            {
+                // we don't care about the heartbeat starting or suceeding
+                // (well, we care, but it will take over the status)
+                return;
+            }
+
+            string message = args.Message;
+
+            if(string.IsNullOrEmpty(message) && !string.IsNullOrEmpty(args.JobName))
+            {
+                message = $"{args.JobName} -> {args.JobStatus.ToString()} " ;
+            }
+
             this.LogStatusMessage(message);
         }
 
